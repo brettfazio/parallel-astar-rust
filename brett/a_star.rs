@@ -94,6 +94,14 @@ pub fn a_star(start: Node, end: Node, graph: &HashMap<Node, Vec<Node>>, h: fn(No
         }
 
         // Compare local cost to cost stored in cost: HashMap<>
+        // Can add in h(node, end) since this should not change.
+        if current.cost > h(current.node, end) + cost[&current.node]
+        {
+            // Since this state was originally added, I have found a better route.
+            // Skip this one.
+            continue;
+        }
+
         let neighbors = &graph[&current.node]; 
         for neighbor in neighbors
         {
@@ -106,7 +114,8 @@ pub fn a_star(start: Node, end: Node, graph: &HashMap<Node, Vec<Node>>, h: fn(No
                 came_from.insert(*neighbor, current.node);
                 
                 cost.insert(*neighbor, temp_g);
-                heap.push(State { node: *neighbor, cost: h(*neighbor, end)});
+                let f_score = h(*neighbor, end) + temp_g;
+                heap.push(State { node: *neighbor, cost: f_score});
             }
         }
 
