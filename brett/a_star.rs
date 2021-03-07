@@ -36,13 +36,16 @@ impl PartialOrd for Node
 
 // States in graph search
 #[derive(Copy, Clone, Eq, PartialEq)]
-struct State {
+struct State
+{
     node: Node,
     cost: i32,
 }
 
-impl Ord for State {
-    fn cmp(&self, other: &Self) -> Ordering {
+impl Ord for State
+{
+    fn cmp(&self, other: &Self) -> Ordering
+    {
         other.cost.cmp(&self.cost)
             .then_with(|| self.node.x.cmp(&other.node.x))
             .then_with(|| self.node.y.cmp(&other.node.y))
@@ -50,7 +53,8 @@ impl Ord for State {
 }
 
 impl PartialOrd for State {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering>
+    {
         Some(self.cmp(other))
     }
 }
@@ -72,11 +76,10 @@ pub fn a_star(start: Node, end: Node, graph: &HashMap<Node, Vec<Node>>, h: fn(No
     let mut cost: HashMap<Node, i32> = HashMap::new();
     // Preset cost of all nodes to inf
     let inf = i32::MAX - 1;
-    for node in graph.keys() {
-        //cost[&node] = inf;
+    for node in graph.keys()
+    {
         cost.insert(*node, inf);
     }
-    //cost[&start] = 0;
     cost.insert(start, 0);
 
     let mut came_from: HashMap<Node, Node> = HashMap::new();
@@ -100,10 +103,8 @@ pub fn a_star(start: Node, end: Node, graph: &HashMap<Node, Vec<Node>>, h: fn(No
             // neighbor should be a reference so it should work
             if temp_g < cost[&neighbor]
             {
-                //came_from[&neighbor] = current.node;
                 came_from.insert(*neighbor, current.node);
                 
-                //cost[&neighbor] = temp_g;
                 cost.insert(*neighbor, temp_g);
                 heap.push(State { node: *neighbor, cost: h(*neighbor, end)});
             }
@@ -116,18 +117,28 @@ pub fn a_star(start: Node, end: Node, graph: &HashMap<Node, Vec<Node>>, h: fn(No
 
 fn main()
 {
+    let start = Node {x: 0, y: 0, };
 
-    let start = Node {
-        x: 0,
-        y: 0,
-    };
+    let one = Node {x: 1, y: 1, };
 
-    let end = Node {
-        x: 0,
-        y: 0,
-    };
+    let two = Node {x: 2, y: 2, };
 
-    let graph: HashMap<Node, Vec<Node>> = HashMap::new();
+    let end = Node {x: 3, y: 3, };
 
-    let _path = a_star(start, end, &graph, heur);
+    let mut graph: HashMap<Node, Vec<Node>> = HashMap::new();
+
+    graph.insert(start, vec![one]);
+    graph.insert(one, vec![two]);
+    graph.insert(two, vec![end]);
+    graph.insert(end, vec![]);
+
+    let came_from = a_star(start, end, &graph, heur);
+
+    for a in came_from.keys()
+    {
+        let b = came_from[a];
+
+        println!("{},{} came from {},{}", a.x, a.y, b.x, b.y);
+    }
+    println!("Path Length = {}", came_from.len());
 }
