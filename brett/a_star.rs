@@ -1,19 +1,19 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::BinaryHeap;
-use std::rc::Rc;
+use std::hash::Hash;
 
+// Nodes with heuristic metadata.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Node
 {
     x: i32, // X cartesian location
     y: i32, // Y cartesian location
-    f: i32, // f = g + h
-    g: i32, // g = cost to get here to far
-    h: i32, // h = estimated hueristic remaining
+    // f: i32, // f = g + h
+    // g: i32, // g = cost to get here to far
+    // h: i32, // h = estimated hueristic remaining
 }
 
-// Ordering for min heap
 impl Ord for Node
 {
     fn cmp(&self, other: &Self) -> Ordering
@@ -21,16 +21,38 @@ impl Ord for Node
         // Notice that the we flip the ordering on costs.
         // In case of a tie we compare positions - this step is necessary
         // to make implementations of `PartialEq` and `Ord` consistent.
-        other.f.cmp(&self.f)
-            .then_with(|| self.g.cmp(&other.g))
-            .then_with(|| self.h.cmp(&other.h))
-            .then_with(|| self.x.cmp(&other.x))
+        other.x.cmp(&self.x)
             .then_with(|| self.y.cmp(&other.y))
     }
 }
 
 impl PartialOrd for Node
 {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering>
+    {
+        Some(self.cmp(other))
+    }
+}
+
+// States in graph search
+#[derive(Copy, Clone, Eq, PartialEq)]
+struct State
+{
+    node: Node,
+    cost: i32,
+}
+
+impl Ord for State
+{
+    fn cmp(&self, other: &Self) -> Ordering
+    {
+        other.cost.cmp(&self.cost)
+            .then_with(|| self.node.x.cmp(&other.node.x))
+            .then_with(|| self.node.y.cmp(&other.node.y))
+    }
+}
+
+impl PartialOrd for State {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering>
     {
         Some(self.cmp(other))
@@ -46,65 +68,77 @@ pub fn heur(current: Node, target: Node) -> i32
     result
 }
 
-pub fn a_star(mut start: Node, end: Node, graph: HashMap<Node, [Node]>, h: fn(Node, Node) -> i32)
+pub fn a_star(start: Node, end: Node, graph: &HashMap<Node, Vec<Node>>, h: fn(Node, Node) -> i32) -> HashMap<Node, Node>
 {
-
     let mut heap = BinaryHeap::new();
+    heap.push(State { node: start, cost: 0 });
 
-    start.g = 0;
-    start.h = heur(start, end);
+    let mut cost: HashMap<Node, i32> = HashMap::new();
+    // Preset cost of all nodes to inf
+    let inf = i32::MAX - 1;
+    for node in graph.keys()
+    {
+        cost.insert(*node, inf);
+    }
+    cost.insert(start, 0);
 
-    heap.push(start);
-
-    let mut cameFrom: HashMap<Node, Node> = HashMap::new();
+    let mut came_from: HashMap<Node, Node> = HashMap::new();
 
     while heap.len() > 0
     {
         let current = heap.pop().unwrap();
 
-        if current == end
+        if current.node == end
         {
             break;
         }
 
-        for neighbor in &mut graph[&current]
+        // Compare local cost to cost stored in cost: HashMap<>
+        let neighbors = &graph[&current.node]; 
+        for neighbor in neighbors
         {
             // 1 unit away from neighbors
-            let temp_g = current.g + 1;
+            let temp_g = cost[&current.node] + 1;
 
             // neighbor should be a reference so it should work
-            if temp_g < neighbor.g
+            if temp_g < cost[&neighbor]
             {
-                cameFrom[neighbor] = current;
+                came_from.insert(*neighbor, current.node);
                 
-
-                neighbor.g = temp_g;
-                neighbor.f = heur(*neighbor, end);
+                cost.insert(*neighbor, temp_g);
+                heap.push(State { node: *neighbor, cost: h(*neighbor, end)});
             }
         }
 
     }
 
+    came_from
 }
 
 fn main()
 {
+    let start = Node {x: 0, y: 0, };
 
-    let mut start = Node {
-        x: 0,
-        y: 0,
-        f: 0,
-        g: 0,
-        h: 0,
-    };
+    let one = Node {x: 1, y: 1, };
 
-    let mut end = Node {
-        x: 0,
-        y: 0,
-        f: 0,
-        g: 0,
-        h: 0,
-    };
+    let two = Node {x: 2, y: 2, };
 
-    println!("Hello");
+    let end = Node {x: 3, y: 3, };
+
+    let mut graph: HashMap<Node, Vec<Node>> = HashMap::new();
+
+    graph.insert(start, vec![one]);
+    graph.insert(one, vec![two]);
+    graph.insert(two, vec![end]);
+    graph.insert(end, vec![]);
+
+    let came_from = a_star(start, end, &graph, heur);
+
+    for a in came_from.keys()
+    {
+        let b = came_from[a];
+
+        println!("{},{} came from {},{}", a.x, a.y, b.x, b.y);
+    }
+    println!("Path Length = {}", came_from.len());
 }
