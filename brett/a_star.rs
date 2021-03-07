@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::BinaryHeap;
-use std::rc::Rc;
+use std::hash::Hash;
 
 // Nodes with heuristic metadata.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
@@ -33,7 +33,6 @@ impl PartialOrd for Node
         Some(self.cmp(other))
     }
 }
-
 
 // States in graph search
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -74,11 +73,13 @@ pub fn a_star(start: Node, end: Node, graph: &HashMap<Node, Vec<Node>>, h: fn(No
     // Preset cost of all nodes to inf
     let inf = i32::MAX - 1;
     for node in graph.keys() {
-        cost[&node] = inf;
+        //cost[&node] = inf;
+        cost.insert(*node, inf);
     }
-    cost[&start] = 0;
+    //cost[&start] = 0;
+    cost.insert(start, 0);
 
-    let mut cameFrom: HashMap<Node, Node> = HashMap::new();
+    let mut came_from: HashMap<Node, Node> = HashMap::new();
 
     while heap.len() > 0
     {
@@ -90,8 +91,8 @@ pub fn a_star(start: Node, end: Node, graph: &HashMap<Node, Vec<Node>>, h: fn(No
         }
 
         // Compare local cost to cost stored in cost: HashMap<>
-
-        for neighbor in graph[&current.node]
+        let neighbors = &graph[&current.node]; 
+        for neighbor in neighbors
         {
             // 1 unit away from neighbors
             let temp_g = cost[&current.node] + 1;
@@ -99,16 +100,18 @@ pub fn a_star(start: Node, end: Node, graph: &HashMap<Node, Vec<Node>>, h: fn(No
             // neighbor should be a reference so it should work
             if temp_g < cost[&neighbor]
             {
-                cameFrom[&neighbor] = current.node;
+                //came_from[&neighbor] = current.node;
+                came_from.insert(*neighbor, current.node);
                 
-                cost[&neighbor] = temp_g;
-                heap.push(State { node: neighbor, cost: h(neighbor, end)});
+                //cost[&neighbor] = temp_g;
+                cost.insert(*neighbor, temp_g);
+                heap.push(State { node: *neighbor, cost: h(*neighbor, end)});
             }
         }
 
     }
 
-    cameFrom
+    came_from
 }
 
 fn main()
@@ -119,12 +122,12 @@ fn main()
         y: 0,
     };
 
-    let mut end = Node {
+    let end = Node {
         x: 0,
         y: 0,
     };
 
-    let mut graph: HashMap<Node, Vec<Node>> = HashMap::new();
+    let graph: HashMap<Node, Vec<Node>> = HashMap::new();
 
-    let path = a_star(start, end, &graph, heur);
+    let _path = a_star(start, end, &graph, heur);
 }
