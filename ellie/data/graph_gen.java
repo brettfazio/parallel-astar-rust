@@ -13,7 +13,7 @@ public class graph_gen {
             adjs[i].add(random(i+1,n-1));
         }
 
-        int m = 6; // edges
+        int m = 3; // edges (minimum n - 1 edges)
 
         for (int i = 0; i <= m - n;) {
             int r = (random(0,n-1));
