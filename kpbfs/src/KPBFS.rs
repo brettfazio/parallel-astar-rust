@@ -70,5 +70,15 @@ pub fn setup()
     let end = Node::new(1, 1, 0, 0, 0, Point::default());
     start.h = distance(start, end);
 
+    println!("hello");
 
+    // Here, we would give each thread a different node to start on.
+	// Those threads would run a* on each of their respective start nodes.
+	for i in 0..NUMTHREADS
+	{
+		// Here we'd pass a start node to each thread.
+		threads.push(thread::spawn(move || {
+			//search(start, i, rx, transmitters, barrier, end, incubent);
+		}))
+	}
 }
