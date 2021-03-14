@@ -60,25 +60,41 @@ fn heuristic(node: Node, end: Node) -> i128
     0
 }
 
+fn search(start: Node,
+    id: usize,
+    goal_node: Node,
+    open: Arc<Mutex<BinaryHeap<Node>>>,
+    open_list: Arc<Mutex<HashSet<Node>>>,
+    closed_list: Arc<Mutex<HashSet<Node>>>)
+{
+    
+}
 
 pub fn setup()
 {
 
     let mut threads = Vec::with_capacity(NUMTHREADS);
 
+    // KPBFS uses global open and close lists
+    let mut open: Arc<Mutex<BinaryHeap<Node>>> = Arc::new(Mutex::new(BinaryHeap::new()));
+	let mut open_list: Arc<Mutex<HashSet<Node>>> = Arc::new(Mutex::new(HashSet::new()));
+	let mut closed_list: Arc<Mutex<HashSet<Node>>> = Arc::new(Mutex::new(HashSet::new()));
+
     let mut start = Node::default();
     let end = Node::new(1, 1, 0, 0, 0, Point::default());
     start.h = distance(start, end);
-
-    println!("hello");
 
     // Here, we would give each thread a different node to start on.
 	// Those threads would run a* on each of their respective start nodes.
 	for i in 0..NUMTHREADS
 	{
+        let clone_open = Arc::clone(&open);
+        let clone_open_list = Arc::clone(&open_list);
+        let clone_closed_list = Arc::clone(&closed_list);
 		// Here we'd pass a start node to each thread.
 		threads.push(thread::spawn(move || {
-			//search(start, i, rx, transmitters, barrier, end, incubent);
+            
+			search(start, i, end, clone_open, clone_open_list, clone_closed_list);
 		}))
 	}
 }
