@@ -1,4 +1,5 @@
-use std::cmp::{Ordering};
+use std::default::Default;
+use std::cmp::Ordering;
 
 // Goal node path and cost of path.
 pub struct Incubent
@@ -9,13 +10,13 @@ pub struct Incubent
 
 impl Incubent
 {
-	pub fn new (node: Node, cost: i128) -> Incubent
+	pub fn new(node: Node, cost: i128) -> Incubent
 	{
 		Incubent { node, cost }
 	}
 }
 
-// Container for trasmitting messages.
+// Container for transmitting messages.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct Buffer (pub Node, pub i128, pub Node);
 
@@ -36,11 +37,11 @@ impl PartialOrd for Buffer
 }
 
 // Point struct for node coordinates.
-#[derive(Eq, Hash, Clone, Copy, Debug)]
+#[derive(Eq, PartialEq, Hash, Clone, Copy, Debug)]
 pub struct Point
 {
 	pub x: i32,
-	pub y: i32,
+	pub y: i32
 }
 
 impl Point
@@ -51,15 +52,15 @@ impl Point
 	}
 }
 
-impl PartialEq for Point
+impl Default for Point
 {
-	fn eq(&self, other: &Self) -> bool 
+	fn default() -> Point
 	{
-		self.x == other.x && self.y == other.y
+		Point { x: -1, y: -1 }
 	}
-}				
+}		
 
-#[derive(Eq, Hash, Clone, Copy, Debug)]
+#[derive(Eq, Hash, Clone, Copy, Default, Debug)]
 pub struct Node
 {
 	pub position: Point,
@@ -80,7 +81,6 @@ impl Node
 	}
 }
 
-// TODO: Change for tuple
 impl Ord for Node
 {
 	fn cmp(&self, other: &Self) -> Ordering 
@@ -88,7 +88,6 @@ impl Ord for Node
 		other.f.cmp(&self.f)
 	}
 }
-
 
 impl PartialOrd for Node
 {

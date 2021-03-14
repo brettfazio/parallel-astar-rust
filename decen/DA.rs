@@ -41,8 +41,8 @@ fn main()
 	let mut threads = Vec::with_capacity(NUMTHREADS);
 	let mut receivers: Vec<Arc<Mutex<Receiver<Buffer>>>> = Vec::with_capacity(NUMTHREADS);
 	let mut transmitters: Vec<Sender<Buffer>> = Vec::with_capacity(NUMTHREADS);
-	let mut start = Node::new(0, 0, 0, 0, 0, Point::new(-1, -1));
-	let end = Node::new(1, 1, 0, 0, 0, Point::new(-1, -1));
+	let mut start = Node::default();
+	let end = Node::new(1, 1, 0, 0, 0, Point::default());
 	start.h = distance(start, end);
 	let barrier = Arc::new(Barrier::new(NUMTHREADS));
 	let incubent: Arc<Mutex<Incubent>> = Arc::new(Mutex::new(Incubent::new(start, i128::MAX)));
@@ -155,12 +155,10 @@ fn search(start: Node, threadNum: usize, rx: Arc<Mutex<Receiver<Buffer>>>, tx: V
 			}
 
 			// Open list is updated with new node values. 
-			let mut newNode = Node { ..node };
+			let mut newNode = Node { g: weight, parent: parent.position, ..node };
 
 			newNode.f = newNode.g + newNode.h;
-			newNode.g = weight;
-			newNode.parent = parent.position;
-			open_list.insert(newNode); 
+			open_list.insert(newNode);
 			open.push(newNode);
 		}
 		
@@ -189,10 +187,10 @@ fn search(start: Node, threadNum: usize, rx: Arc<Mutex<Receiver<Buffer>>>, tx: V
 			// Temp fix, let all threads know goal node is found.
 			for thread in tx
 			{
-				thread.send(Buffer(Node::new(-1, -1, 0, 0, 0, Point::new(-1, -1)), -1, Node::new(-1, -1, 0, 0, 0, Point::new(-1, -1)))).unwrap();
+				thread.send(Buffer(Node::default(), -1, Node::default())).unwrap();
 			}
 			
-			// incubentData is dropped implicitely since scope is left.
+			// incubentData is dropped implicitly since scope is left.
 			return;
 		}
 
@@ -209,14 +207,14 @@ fn search(start: Node, threadNum: usize, rx: Arc<Mutex<Receiver<Buffer>>>, tx: V
 			{
 				// n' is created, now let's put it in a random buffered list.
 				let (xCoord, yCoord) = (tempNode.position.x + x, tempNode.position.y + y);
-				let nPrime = Node::new(xCoord, yCoord, 0, tempNode.g + GRAPH[(xCoord) as usize][(yCoord) as usize] as i128, 0, tempNode.position);
-				let mut tried = HashSet::new();
-				tried.insert(threadNum as i32);
+				let nPrime = Node::new(xCoord, yCoord, 0, tempNode.g + GRAPH[xCoord as usize][yCoord as usize] as i128, 0, tempNode.position);
+				let mut tried: HashSet<usize> = HashSet::new();
+				tried.insert(threadNum);
 				
 				loop
 				{
 					let i = computeRecipient(&tried); // calculate random thread to send to
-					tried.insert(i as i32);
+					tried.insert(i);
 
 					match tx[i].send(Buffer(nPrime, GRAPH[nPrime.position.x as usize][nPrime.position.y as usize], tempNode))
 					{
@@ -225,7 +223,7 @@ fn search(start: Node, threadNum: usize, rx: Arc<Mutex<Receiver<Buffer>>>, tx: V
 							//println!("From #{} to thread #{}\n\tSending {:?} to thread", threadNum, i, Buffer(nPrime, 1, tempNode));
 							break;
 						},
-						Err(error) =>
+						Err(_) =>
 						{
 							// println!("Error in sending :(\n{:?}", error);
 							if tried.len() < NUMTHREADS
@@ -246,14 +244,14 @@ fn search(start: Node, threadNum: usize, rx: Arc<Mutex<Receiver<Buffer>>>, tx: V
 
 // NOT ACTUALLY RANDOM, I'M SORRY :(
 // Will be random later, :)
-fn computeRecipient(setty: &HashSet<i32>) -> usize
+fn computeRecipient(setty: &HashSet<usize>) -> usize
 {
 	let mut index = 0;
 
 	loop
 	{
 		// Makes sure we don't index the same thread's channel or a dead channel
-		if setty.contains(&(index as i32))
+		if setty.contains(&index)
 		{
 			index = (index + 1) % NUMTHREADS;
 			continue;
