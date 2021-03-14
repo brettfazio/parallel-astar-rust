@@ -29,13 +29,13 @@ fn distance(node: Node, end: Node) -> i128
 fn expensive(node: Node, end: Node) -> i128
 {
 
-    // need to import via cargo
-    // let mut rng = rand::thread_rng();
+    //need to import via cargo
+    let mut rng = rand::thread_rng();
 
-    // let time = rng.gen_range(100..1000);
+    let time = rng.gen_range(100..1000);
 
-    // let rand_millis = time::Duration::from_millis(time);
-    // thread::sleep(rand_millis);
+    let rand_millis = time::Duration::from_millis(time);
+    thread::sleep(rand_millis);
 
 	(((end.position.x - node.position.x).pow(2) + (end.position.y - node.position.y).pow(2)) 
 	as f32).sqrt() as i128
@@ -61,7 +61,7 @@ fn heuristic(node: Node, end: Node) -> i128
 }
 
 
-fn setup()
+pub fn setup()
 {
 
     let mut threads = Vec::with_capacity(NUMTHREADS);
