@@ -15,7 +15,7 @@ const NUMTHREADS: usize = 32;
 #[derive(PartialEq)]
 enum HeurType
 {
-    EuclideanDist, Expensive, NonAdmissible
+    EuclideanDist, Expensive, NonAdmissible, ExpensiveNonAdmissible
 }
 
 const USING_HEUR: HeurType = HeurType::Expensive;
@@ -26,19 +26,43 @@ fn distance(node: Node, end: Node) -> i128
 	        as f32).sqrt() as i128
 }
 
-fn expensive(node: Node, end: Node) -> i128
+fn random_wait()
 {
-
     //need to import via cargo
     let mut rng = rand::thread_rng();
 
     let time = rng.gen_range(100..1000);
-
+    
     let rand_millis = time::Duration::from_millis(time);
     thread::sleep(rand_millis);
+}
+
+fn expensive(node: Node, end: Node) -> i128
+{
+    random_wait();
 
 	(((end.position.x - node.position.x).pow(2) + (end.position.y - node.position.y).pow(2)) 
 	as f32).sqrt() as i128
+}
+
+fn non_admissible(node: Node, end: Node, expensive: bool) -> i128
+{
+    if expensive
+    {
+        random_wait();
+    }
+
+    let mut rng = rand::thread_rng();
+
+    let percent = rng.gen_range(1.0..100.0);
+
+
+	let dist = (((end.position.x - node.position.x).pow(2) + (end.position.y - node.position.y).pow(2)) 
+	as f32).sqrt() as i128;
+
+    let result = (dist as f64) + (percent/100.0)* (dist as f64);
+
+    result as i128
 }
 
 fn heuristic(node: Node, end: Node) -> i128
@@ -49,11 +73,15 @@ fn heuristic(node: Node, end: Node) -> i128
     }
     else if USING_HEUR == HeurType::Expensive
     {
-
+        return expensive(node, end);
     }
-    else if USING_HEUR == HeurType::Expensive
+    else if USING_HEUR == HeurType::NonAdmissible
     {
-
+        return non_admissible(node, end, false);
+    }
+    else if USING_HEUR == HeurType::ExpensiveNonAdmissible
+    {
+        return non_admissible(node, end, true);
     }
     
     // Won't occur
