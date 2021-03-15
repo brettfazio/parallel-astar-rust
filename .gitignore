@@ -1,0 +1,7 @@
+# Binary files
+*
+!/**/
+!*.*
+
+# Cargo
+**/target
