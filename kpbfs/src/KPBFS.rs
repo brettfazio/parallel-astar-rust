@@ -20,6 +20,8 @@ enum HeurType
 
 const USING_HEUR: HeurType = HeurType::Expensive;
 
+const GRAPH: [[char; 0]; 0] = [];
+
 fn distance(node: Node, end: Node) -> i128
 {
 	(((end.position.x - node.position.x).pow(2) + (end.position.y - node.position.y).pow(2)) 
@@ -86,14 +88,32 @@ fn heuristic(node: Node, end: Node) -> i128
     0
 }
 
+fn is_valid(x: usize, y: usize) -> bool
+{
+    let in_bounds = x >= 0 && y >= 0 && x < GRAPH.len() && y < GRAPH.len();
+    if !in_bounds
+    {
+        return false;
+    }
+
+    return in_bounds && GRAPH[x][y] != 'W'
+}
+
 fn search(start: Node,
     id: usize,
     goal_node: Node,
     open: Arc<Mutex<BinaryHeap<Node>>>,
     open_list: Arc<Mutex<HashSet<Node>>>,
-    closed_list: Arc<Mutex<HashSet<Node>>>)
+    closed_list: Arc<Mutex<HashSet<Node>>>,
+    finished: Arc<Mutex<bool>>)
 {
     loop {
+        let mut fin = finished.lock().unwrap();
+        if *fin
+        {
+            return;
+        }
+
         let len = open_list.lock().and_then(|list | Ok(list.len()));
         if let Ok(l) = len {
             if l == 0 {
@@ -104,10 +124,33 @@ fn search(start: Node,
         }
 
         // wait for open to have node and try getting node
-        if let Ok(mut pq) = open.lock() {
-            let node = pq.pop();
-        } else {
+        let mut pq = open.lock().unwrap();
+
+        let node = pq.pop().unwrap();
+
+        // If this is equal to the goal node
+        if node == goal_node
+        {
+            //  Store this and notfiy other threads
+            let mut set_fin = finished.lock().unwrap();
+            *set_fin = true;
             return;
+        }
+
+        let adjacent = vec![(0, 1), (-1, 0), (1, 0), (0, -1)];
+
+        for (x, y) in adjacent
+		{
+            let n_x = node.position.x + x;
+            let n_y = node.position.y + y;
+
+            if is_valid(n_x as usize, n_y as usize)
+            {
+                // check if closed list contains it
+                let n_prime = Node::new(n_x, n_y, 0, node.g + 1, 0, node.position);
+
+                pq.insert(n_prime);
+            }
         }
 
         // expand node
@@ -129,6 +172,8 @@ pub fn setup()
 	let mut open_list: Arc<Mutex<HashSet<Node>>> = Arc::new(Mutex::new(HashSet::new()));
 	let mut closed_list: Arc<Mutex<HashSet<Node>>> = Arc::new(Mutex::new(HashSet::new()));
 
+    let mut finished: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
+
     let mut start = Node::default();
     let end = Node::new(1, 1, 0, 0, 0, Point::default());
     start.h = distance(start, end);
@@ -140,10 +185,10 @@ pub fn setup()
         let clone_open = Arc::clone(&open);
         let clone_open_list = Arc::clone(&open_list);
         let clone_closed_list = Arc::clone(&closed_list);
+        let clone_fin = Arc::clone(&finished);
 		// Here we'd pass a start node to each thread.
 		threads.push(thread::spawn(move || {
-            
-			search(start, i, end, clone_open, clone_open_list, clone_closed_list);
+			search(start, i, end, clone_open, clone_open_list, clone_closed_list, clone_fin);
 		}))
 	}
 }
