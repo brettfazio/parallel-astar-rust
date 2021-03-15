@@ -91,7 +91,8 @@ fn heuristic(node: Node, end: Node) -> i128
 
 fn is_valid(x: usize, y: usize) -> bool
 {
-    let in_bounds = x >= 0 && y >= 0 && x < GRAPH.len() && y < GRAPH.len();
+    // Don't need to check below 0 since unsigned
+    let in_bounds = x < GRAPH.len() && y < GRAPH.len();
     if !in_bounds
     {
         return false;
@@ -165,8 +166,10 @@ fn search(start: Node,
 
             if is_valid(n_x as usize, n_y as usize)
             {
-                
-                let n_prime = Node::new(n_x, n_y, 0, node.g + 1, 0, node.position);
+                // x: i32, y: i32, f: i128, g: i128, h: i128, parent: Point
+                let mut n_prime = Node::new(n_x, n_y, 0, node.g + 1, 0, node.position);
+                n_prime.h = heuristic(n_prime, goal_node);
+                n_prime.f = n_prime.g + n_prime.h;
 
                 // check if closed list contains it
                 let mut prime_cl = closed_list.lock().unwrap();
