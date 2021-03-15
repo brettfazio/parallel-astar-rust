@@ -2,17 +2,17 @@ use std::default::Default;
 use std::cmp::Ordering;
 
 // Goal node path and cost of path.
-pub struct Incubent
+pub struct Incumbent
 {
 	pub node: Node,
 	pub cost: i128
 }
 
-impl Incubent
+impl Incumbent
 {
-	pub fn new(node: Node, cost: i128) -> Incubent
+	pub fn new(node: Node, cost: i128) -> Incumbent
 	{
-		Incubent { node, cost }
+		Incumbent { node, cost }
 	}
 }
 

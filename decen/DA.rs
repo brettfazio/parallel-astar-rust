@@ -7,7 +7,7 @@ use std::sync::mpsc::{channel, Sender, Receiver, TryRecvError};
 use std::sync::{Arc, Barrier, Mutex};
 
 mod structs;
-use structs::{Incubent, Node, Point, Buffer};
+use structs::{Incumbent, Node, Point, Buffer};
 
 const NUMTHREADS: usize = 8;
 
@@ -45,7 +45,7 @@ fn main()
 	let end = Node::new(1, 1, 0, 0, 0, Point::default());
 	start.h = distance(start, end);
 	let barrier = Arc::new(Barrier::new(NUMTHREADS));
-	let incubent: Arc<Mutex<Incubent>> = Arc::new(Mutex::new(Incubent::new(start, i128::MAX)));
+	let incumbent: Arc<Mutex<Incumbent>> = Arc::new(Mutex::new(Incumbent::new(start, i128::MAX)));
 
 	// Declares Channels
 	for _i in 0..NUMTHREADS
@@ -61,13 +61,13 @@ fn main()
 	for i in 0..NUMTHREADS
 	{
 		let transmitters = transmitters.clone();
-		let incubent = incubent.clone();
+		let incumbent = incumbent.clone();
 		let barrier = barrier.clone();
 		let rx = receivers[i].clone();
 
 		// Here we'd pass a start node to each thread.
 		threads.push(thread::spawn(move || {
-			search(start, i, rx, transmitters, barrier, end, incubent);
+			search(start, i, rx, transmitters, barrier, end, incumbent);
 		}))
 	}
 
@@ -76,11 +76,13 @@ fn main()
 	{
 		thread.join().expect("Panic");
 	}
+
+	println!("At least one thread found the goal node and stopped remaining threads. Program exited prematurely.")
 }
 
 // A* implementation
 fn search(start: Node, threadNum: usize, rx: Arc<Mutex<Receiver<Buffer>>>, tx: Vec<Sender<Buffer>>,
-	        barrier: Arc<Barrier>,goal_node: Node, incubent: Arc<Mutex<Incubent>>)
+	        barrier: Arc<Barrier>,goal_node: Node, incumbent: Arc<Mutex<Incumbent>>)
 {
 	let mut buffer: BinaryHeap<Buffer> = BinaryHeap::new();
 	let mut open: BinaryHeap<Node> = BinaryHeap::new();
@@ -163,9 +165,9 @@ fn search(start: Node, threadNum: usize, rx: Arc<Mutex<Receiver<Buffer>>>, tx: V
 		}
 		
 		// Safe guards before we check if node is goal node.
-		let mut incubentData = incubent.lock().unwrap();
+		let mut incumbentData = incumbent.lock().unwrap();
 
-		if open.is_empty() || open.peek().unwrap().g >= incubentData.cost
+		if open.is_empty() || open.peek().unwrap().g >= incumbentData.cost
 		{
 			continue;
 		}
@@ -177,11 +179,11 @@ fn search(start: Node, threadNum: usize, rx: Arc<Mutex<Receiver<Buffer>>>, tx: V
 		closed_list.insert(tempNode);
 		
 		// Check if goal node.
-		if tempNode == goal_node && incubentData.cost >= tempNode.g
+		if tempNode == goal_node && incumbentData.cost >= tempNode.g
 		{
-			incubentData.node = tempNode;
-			incubentData.cost = tempNode.g;
-			//println!("cost to goal node is{}", incubentData.cost);
+			incumbentData.node = tempNode;
+			incumbentData.cost = tempNode.g;
+			//println!("cost to goal node is{}", incumbentData.cost);
 			println!("We found goal using thread {}", threadNum);
 
 			// Temp fix, let all threads know goal node is found.
@@ -190,11 +192,11 @@ fn search(start: Node, threadNum: usize, rx: Arc<Mutex<Receiver<Buffer>>>, tx: V
 				thread.send(Buffer(Node::default(), -1, Node::default())).unwrap();
 			}
 			
-			// incubentData is dropped implicitly since scope is left.
+			// incumbentData is dropped implicitly since scope is left.
 			return;
 		}
 
-		drop(incubentData);
+		drop(incumbentData);
 		
 		let adjacent = vec![(-1, 1), (0, 1), (1, 1), (-1, 0), (1, 0), (-1, -1), (0, -1), (1, -1)];
 
