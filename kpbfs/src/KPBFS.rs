@@ -41,8 +41,7 @@ fn expensive(node: Node, end: Node) -> i128
 {
     random_wait();
 
-	(((end.position.x - node.position.x).pow(2) + (end.position.y - node.position.y).pow(2)) 
-	as f32).sqrt() as i128
+	distance(node, end)
 }
 
 fn non_admissible(node: Node, end: Node, expensive: bool) -> i128
@@ -57,8 +56,7 @@ fn non_admissible(node: Node, end: Node, expensive: bool) -> i128
     let percent = rng.gen_range(1.0..100.0);
 
 
-	let dist = (((end.position.x - node.position.x).pow(2) + (end.position.y - node.position.y).pow(2)) 
-	as f32).sqrt() as i128;
+	let dist = distance(node, end);
 
     let result = (dist as f64) + (percent/100.0)* (dist as f64);
 
@@ -95,6 +93,29 @@ fn search(start: Node,
     open_list: Arc<Mutex<HashSet<Node>>>,
     closed_list: Arc<Mutex<HashSet<Node>>>)
 {
+    loop {
+        let len = open_list.lock().and_then(|list | Ok(list.len()));
+        if let Ok(l) = len {
+            if l == 0 {
+                return;
+            }
+        } else {
+            return;
+        }
+
+        // wait for open to have node and try getting node
+        if let Ok(mut pq) = open.lock() {
+            let node = pq.pop();
+        } else {
+            return;
+        }
+
+        // expand node
+        
+        // update
+
+        // check for answer
+    }
     
 }
 
