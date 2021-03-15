@@ -5,10 +5,12 @@
 
 ### Sequential A*
 
-Simple go into any of the named directories (e.g. Brett or Ellie) and do `rustc FILE.rs` to compile and then `./FILE` to run.
+Simply go into any of the named directories (e.g. Brett or Ellie) and run `rustc FILE.rs` to compile and then `./FILE` to execute.
 
 ### Decentralized A*
 
+In the "decen" folder, run `rustc DA.rs` and then `./DA`.
+
 ### KPBFS
 
-In the KPBFS folder run `cargo build` and then `cargo run`
+In the "kpbfs" folder, run `cargo build` and then `cargo run`.
