@@ -19,9 +19,20 @@ enum HeurType
     EuclideanDist, Expensive, NonAdmissible, ExpensiveNonAdmissible
 }
 
-const USING_HEUR: HeurType = HeurType::Expensive;
+const USING_HEUR: HeurType = HeurType::EuclideanDist;
 
-const GRAPH: [[char; 0]; 0] = [];
+const GRAPH: [[char; 10]; 10] = [
+    ['.', '.', '.', '.', '.', '.', 'W', '.', '.', '.'],
+    ['.', '.', '.', '.', 'S', '.', '.', 'W', '.', '.'],
+    ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
+    ['.', '.', 'W', '.', '.', '.', 'W', '.', '.', '.'],
+    ['W', 'W', '.', '.', '.', 'W', '.', '.', 'W', 'W'],
+    ['.', 'W', '.', 'W', 'W', 'W', 'W', '.', 'W', '.'],
+    ['W', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
+    ['W', '.', 'W', 'W', 'W', '.', 'W', '.', '.', '.'],
+    ['.', '.', '.', '.', 'W', '.', '.', '.', '.', '.'],
+    ['E', '.', 'W', '.', '.', 'W', '.', 'W', '.', '.']
+];
 
 fn distance(node: Node, end: Node) -> i128
 {
@@ -117,7 +128,6 @@ fn search(start: Node,
 
         // wait for open to have node and try getting node
         let mut pq = open.lock().unwrap();
-
         if pq.len() == 0
         {
             continue;
@@ -128,6 +138,7 @@ fn search(start: Node,
         // If this is equal to the goal node
         if node == goal_node
         {
+            println!("found goal!");
             //  Store this and notfiy other threads
             finished.swap(true, Ordering::Relaxed);
             return;
@@ -222,7 +233,6 @@ fn search(start: Node,
 
 pub fn setup()
 {
-
     let mut threads = Vec::with_capacity(NUMTHREADS);
 
     // KPBFS uses global open and close lists
@@ -232,12 +242,19 @@ pub fn setup()
 
     let mut finished: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 
-    let mut start = Node::default();
-    let end = Node::new(1, 1, 0, 0, 0, Point::default());
+    let mut start = Node::new(0, 0, 0, 0, 0, Point::default());
+    let end = Node::new(9, 9, 0, 0, 0, Point::default());
     start.h = distance(start, end);
+    start.f = start.g + start.h;
 
-    // Here, we would give each thread a different node to start on.
-	// Those threads would run a* on each of their respective start nodes.
+    // Add to open
+    let mut init_open = open.lock().unwrap();
+    let mut init_ol = open_list.lock().unwrap();
+    init_open.push(start);
+    init_ol.insert(start);
+    drop(init_open);
+    drop(init_ol);
+
 	for i in 0..NUMTHREADS
 	{
         let clone_open = Arc::clone(&open);
@@ -248,5 +265,11 @@ pub fn setup()
 		threads.push(thread::spawn(move || {
 			search(start, i, end, clone_open, clone_open_list, clone_closed_list, &clone_fin);
 		}))
+	}
+
+    // Final answer is outputted once all threads are done.
+	for thread in threads
+	{
+		thread.join().expect("Panic");
 	}
 }
