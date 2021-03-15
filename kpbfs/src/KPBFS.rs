@@ -3,6 +3,7 @@ use std::mem::drop;
 use std::collections::{HashSet, BinaryHeap};
 use std::sync::mpsc::{channel, Sender, Receiver, TryRecvError};
 use std::sync::{Arc, Barrier, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use rand::Rng;
 
@@ -105,59 +106,113 @@ fn search(start: Node,
     open: Arc<Mutex<BinaryHeap<Node>>>,
     open_list: Arc<Mutex<HashSet<Node>>>,
     closed_list: Arc<Mutex<HashSet<Node>>>,
-    finished: Arc<Mutex<bool>>)
+    finished: &AtomicBool)
 {
     loop {
-        let mut fin = finished.lock().unwrap();
-        if *fin
+        if finished.load(Ordering::Relaxed)
         {
-            return;
-        }
-
-        let len = open_list.lock().and_then(|list | Ok(list.len()));
-        if let Ok(l) = len {
-            if l == 0 {
-                return;
-            }
-        } else {
             return;
         }
 
         // wait for open to have node and try getting node
         let mut pq = open.lock().unwrap();
 
-        let node = pq.pop().unwrap();
+        if pq.len() == 0
+        {
+            continue;
+        }
 
+        let node = pq.pop().unwrap();
+        drop(pq);
         // If this is equal to the goal node
         if node == goal_node
         {
             //  Store this and notfiy other threads
-            let mut set_fin = finished.lock().unwrap();
-            *set_fin = true;
+            finished.swap(true, Ordering::Relaxed);
             return;
         }
 
+        // Check the closed list
+        let mut cl = closed_list.lock().unwrap();
+        if cl.contains(&node)
+        {
+            if cl.get(&node).unwrap().g > node.g
+            {
+                cl.remove(&node);
+            }
+            else
+            {
+                continue;
+            }
+        }
+        // Release the lock.
+        drop(cl);
+
+        
+
         let adjacent = vec![(0, 1), (-1, 0), (1, 0), (0, -1)];
 
+        let mut add_pq = open.lock().unwrap();
         for (x, y) in adjacent
 		{
             let n_x = node.position.x + x;
             let n_y = node.position.y + y;
 
+            if n_x < 0 || n_y < 0
+            {
+                continue;
+            }
+
             if is_valid(n_x as usize, n_y as usize)
             {
-                // check if closed list contains it
+                
                 let n_prime = Node::new(n_x, n_y, 0, node.g + 1, 0, node.position);
 
-                pq.insert(n_prime);
+                // check if closed list contains it
+                let mut prime_cl = closed_list.lock().unwrap();
+                if prime_cl.contains(&n_prime)
+                {
+                    if prime_cl.get(&n_prime).unwrap().g > n_prime.g
+                    {
+                        prime_cl.remove(&n_prime);
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                }
+                // Release the lock.
+                drop(prime_cl);
+
+
+                // do same for open list
+                let mut prime_ol = open_list.lock().unwrap();
+                if prime_ol.contains(&n_prime)
+                {
+                    if prime_ol.get(&n_prime).unwrap().g > n_prime.g
+                    {
+                        prime_ol.remove(&n_prime);
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                }
+
+                // add to open list
+                prime_ol.insert(n_prime);
+
+                // Release the lock.
+                drop(prime_ol);
+
+                
+                // add to pq
+                add_pq.push(n_prime);
+
             }
         }
 
-        // expand node
-        
-        // update
-
-        // check for answer
+        // add_pq goes out of scope here.
     }
     
 }
@@ -172,7 +227,7 @@ pub fn setup()
 	let mut open_list: Arc<Mutex<HashSet<Node>>> = Arc::new(Mutex::new(HashSet::new()));
 	let mut closed_list: Arc<Mutex<HashSet<Node>>> = Arc::new(Mutex::new(HashSet::new()));
 
-    let mut finished: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
+    let mut finished: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 
     let mut start = Node::default();
     let end = Node::new(1, 1, 0, 0, 0, Point::default());
@@ -188,7 +243,7 @@ pub fn setup()
         let clone_fin = Arc::clone(&finished);
 		// Here we'd pass a start node to each thread.
 		threads.push(thread::spawn(move || {
-			search(start, i, end, clone_open, clone_open_list, clone_closed_list, clone_fin);
+			search(start, i, end, clone_open, clone_open_list, clone_closed_list, &clone_fin);
 		}))
 	}
 }
