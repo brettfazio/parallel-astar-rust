@@ -12,7 +12,7 @@ enum Barrier {
 pub struct DynamicBarrier {
 	tx: Vec<Sender<Barrier>>,
 	receivers: Vec<Arc<Mutex<Receiver<Barrier>>>>,
-	rx: Arc<Mutex<Receiver<Barrier>>>,
+	rx: Option<Arc<Mutex<Receiver<Barrier>>>>,
 	threads: usize,
 	cur: isize,
 	count: usize,
@@ -26,7 +26,7 @@ impl DynamicBarrier {
 		for _i in 0..threads {
     		let (tx, rx) = channel::<Barrier>();
 
-    	 	transmitters.push(tx.clone());
+    	 	transmitters.push(tx);
     		receivers.push(Arc::new(Mutex::new(rx)));
     	}
 
@@ -35,23 +35,26 @@ impl DynamicBarrier {
 			tx: transmitters,
 			threads: threads - 1,
 			count: 0,
-			rx: Arc::new(Mutex::new(channel::<Barrier>().1)),
+			rx: None,
 			cur: -1,
 		}
 	}
+	
+	fn create(&mut self) -> DynamicBarrier {
+		self.cur += 1;
+		self.clone()
+	}
 
 	fn wait(&mut self) {
-	    let rx = self.rx.lock().unwrap();
+		let rx = self.rx.as_ref().clone();
 		self.count = 0;
 	
 		for tx in &self.tx {
-			match tx.send(Barrier::AtCheckPoint) {
-				_ => continue
-			}
+			tx.send(Barrier::AtCheckPoint).ok();
 		}
 
 		loop {
-			match rx.recv() {
+			match rx.unwrap().lock().unwrap().recv() {
 				Ok(barrier) => if barrier == Barrier::AtCheckPoint { self.count += 1 } else { self.threads -= 1 },
 				Err(_) => continue
 			}
@@ -63,7 +66,7 @@ impl DynamicBarrier {
 	}
 
 	fn exit(self) {
-		for tx in &self.tx {
+		for tx in self.tx.clone() {
 			match tx.send(Barrier::Exit) {
 				Ok(_) => drop(tx),
 				Err(_) => continue
@@ -74,13 +77,13 @@ impl DynamicBarrier {
 
 impl Clone for DynamicBarrier {
 	fn clone(&self) -> Self {
-	    // Must wrap receivers in a mutex
-	    let rx = self.receivers[(self.cur + 1) as usize].clone();
-	    
+		let rx = self.receivers[self.cur as usize].clone();
+
 		DynamicBarrier {
-			rx,
+			rx: Some(rx),
 			tx: self.tx.clone(),
-			cur: self.cur + 1,
+			cur: self.cur,
+			receivers: vec![],
 			..*self
 		}
 	}
