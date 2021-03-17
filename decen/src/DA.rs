@@ -16,7 +16,7 @@ use structs::{Incumbent, Node, Point, Buffer};
 // PascalCase
 mod DynamicBarrier;
 use DynamicBarrier::DynamicHurdle;
-const NUMTHREADS: usize = 3;
+const NUMTHREADS: usize = 8;
 
 // Euclidean Distance
 fn distance(node: Node, end: Node) -> i128
@@ -95,7 +95,7 @@ pub fn setup(graph: Vec<Vec<char>>)
 		thread.join().expect("Panic");
 	}
 
-	println!("At least one thread found the goal node and stopped remaining threads. Program exited prematurely.")
+	println!("All threads found goal node.")
 }
 
 // A* implementation
@@ -108,24 +108,30 @@ fn search(start: Node, threadNum: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Bu
 	let mut open_list: HashSet<Node> = HashSet::new();
 	let mut closed_list: HashSet<Node> = HashSet::new();
 	let mut firstIteration: bool = true;
-	// let rx = rx.lock().unwrap();
+	let mut tried: HashSet<i32> = HashSet::new();	
+	let mut dropBuff: bool = false;
 	// Giving appropriate lists start variable.
 	open.push(start);
 	open_list.insert(start);
 	buffer.push(Buffer(start, 0, start));
+	tried.insert(threadNum as i32);
 
 	loop
 	{
 		// Loops until we have no more data to add to buffer list.
-	
+		
 		barrier.wait();
 		
-		if !firstIteration && sentMessages.load(Ordering::Acquire) == receivedMessages.load(Ordering::Acquire)
+		if !firstIteration && sentMessages.load(Ordering::SeqCst) == receivedMessages.load(Ordering::SeqCst)
 		{
-			println!("yippee!!");
-			return;
+			//println!("terminating: {} vs {} in {}", sentMessages.load(Ordering::SeqCst), receivedMessages.load(Ordering::SeqCst), threadNum);
+
+			break;
 		}
-		println!("{} vs {}", sentMessages.load(Ordering::Acquire), receivedMessages.load(Ordering::Acquire));
+
+		barrier.wait();
+		//println!("{} vs {} in {}", sentMessages.load(Ordering::SeqCst), receivedMessages.load(Ordering::SeqCst), threadNum);
+
 		firstIteration = false;
 		
 		loop
@@ -135,11 +141,17 @@ fn search(start: Node, threadNum: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Bu
 			{
 				Ok(v) =>
 				{
-					receivedMessages.store(receivedMessages.load(Ordering::Acquire) + 1, Ordering::Release);
+					receivedMessages.fetch_add(1, Ordering::SeqCst);
 					buffer.push(v);
 				},
 				Err(_) => break,
 			}
+		}
+		
+		if dropBuff
+		{
+			drop(rx);
+			break;
 		}
 
 		// Loop until buffer is empty.
@@ -153,7 +165,6 @@ fn search(start: Node, threadNum: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Bu
 				if closed_list.get(&node).unwrap().g > weight
 				{
 					closed_list.remove(&node);
-					// Defer Adding to bottom of loop.
 				}
 				else
 				{
@@ -171,7 +182,7 @@ fn search(start: Node, threadNum: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Bu
 					open_list.remove(&node);
 				}
 			}
-
+			
 			// Open list is updated with new node values. 
 			let mut newNode = Node { g: weight, parent: parent.position, ..node };
 			newNode.h = distance(newNode, goalNode);
@@ -202,30 +213,29 @@ fn search(start: Node, threadNum: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Bu
 		{
 			incumbentData.node = tempNode;
 			incumbentData.cost = tempNode.g;
-			// println!("cost to goal node is {}", incumbentData.cost);
+			//println!("cost to goal node is {}", incumbentData.cost);
 
-			drop(rx);
-			barrier.exit();
+			
 			// incumbentData is dropped implicitly since scope is left.
-			break;
+			
+			dropBuff = true;
 		}
 		
 		drop(incumbentData);
 		
 		let adjacent = vec![(-1, 1), (0, 1), (1, 1), (-1, 0), (1, 0), (-1, -1), (0, -1), (1, -1)];
+		
 
 		// First check if valid move, then We will offset to n', and pass off three-tuple
 		// to random thread's buffer list.
 		for (x, y) in adjacent
 		{
 			// Safe guard before we test a movement
-			if isValidNeighbor(&graph, tempNode, x, y)
+			if isValidNeighbor(&graph, &tempNode, x, y)
 			{
 				// n' is created, now let's put it in a random buffered list.
 				let (xCoord, yCoord) = (tempNode.position.x + x, tempNode.position.y + y);
 				let nPrime = Node::new(xCoord, yCoord, 0, tempNode.g + 1, 0, tempNode.position);
-				let mut tried: HashSet<i32> = HashSet::new();
-				tried.insert(threadNum as i32);
 				
 				loop
 				{
@@ -237,19 +247,19 @@ fn search(start: Node, threadNum: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Bu
 						break;
 					}
 
-					tried.insert(i as i32);
-
 					match tx[i as usize].send(Buffer(nPrime, nPrime.g, tempNode))
 					{
 						Ok(_) =>
 						{
-							sentMessages.store(sentMessages.load(Ordering::Acquire) + 1, Ordering::Release);
+							sentMessages.fetch_add(1, Ordering::SeqCst);
 							//println!("From #{} to thread #{}\n\tSending {:?} to thread", threadNum, i, Buffer(nPrime, 1, tempNode));
 							break;
 						},
 						Err(_) =>
 						{
-							println!("Error in sending :(");
+							//println!("Error in sending :( from {} to {}", threadNum, i);
+							tried.insert(i as i32);
+							
 							if tried.len() < NUMTHREADS
 							{
 								continue;
@@ -266,14 +276,15 @@ fn search(start: Node, threadNum: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Bu
 	}
 }
 
+// A non mutually-exlusive function could be the issue
 fn computeRecipient(node: &Node, setty: &HashSet<i32>) -> i32
 {
 	let mut index;
 	let hash = calculateHash(&node);
 
-	for i in 0..NUMTHREADS as i32
+	for i in 0..NUMTHREADS as u64
 	{
-		index = (hash + i as u64) % NUMTHREADS as u64;
+		index = (hash + i) % NUMTHREADS as u64;
 		// Makes sure we don't index the same thread's channel or a dead channel
 		if setty.contains(&(index as i32))
 		{
@@ -298,7 +309,7 @@ fn calculateHash<T: Hash>(t: &T) -> u64
 
 // Basic bounds checking
 // Now we care about walls
-fn isValidNeighbor(graph: &Vec<Vec<char>>, node: Node, x: i32, y: i32) -> bool
+fn isValidNeighbor(graph: &Vec<Vec<char>>, node: &Node, x: i32, y: i32) -> bool
 {
 	let (x0, y0) = (node.position.x + x, node.position.y + y);
 
