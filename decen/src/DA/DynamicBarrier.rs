@@ -1,6 +1,5 @@
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::sync::{Arc, Mutex};
-use std::clone::Clone;
 use std::mem::drop;
 
 // Channel receiver types.
@@ -23,7 +22,7 @@ enum Barrier
 }
 
 // Structure for dynamic barrier.
-pub struct DynamicBarrier
+pub struct DynamicHurdle
 {
 	tx: Vec<Sender<Barrier>>,
 	rx: BarrierRecv,
@@ -33,11 +32,11 @@ pub struct DynamicBarrier
 }
 
 // Dynamic Barrier implementation for synchronizing threads.
-impl DynamicBarrier
+impl DynamicHurdle
 {
 	// Creates channel for the given given number of threads.
 	// Returns new barrier for the main thread.
-	pub fn new(threads: usize) -> DynamicBarrier
+	pub fn new(threads: usize) -> DynamicHurdle
 	{
 		let mut receivers: Vec<Arc<Mutex<Receiver<Barrier>>>> = Vec::with_capacity(threads);
 		let mut transmitters: Vec<Sender<Barrier>> = Vec::with_capacity(threads);
@@ -50,11 +49,11 @@ impl DynamicBarrier
 			receivers.push(Arc::new(Mutex::new(rx)));
 		}
 
-		DynamicBarrier
+		DynamicHurdle
 		{
 			tx: transmitters,
 			rx: BarrierRecv { receivers: Some(receivers), receiver: None },
-			threads: threads - 1,
+			threads,
 			count: 0,
 			cur: -1,
 		}
@@ -62,7 +61,7 @@ impl DynamicBarrier
 
 	// Clones barrier from the main thread and increments
 	// internal counter representing the current thread number.
-	pub fn create(&mut self) -> DynamicBarrier
+	pub fn create(&mut self) -> DynamicHurdle
 	{
 		self.cur += 1;
 		self.clone()
@@ -116,17 +115,18 @@ impl DynamicBarrier
 				Err(_) => continue
 			}
 		}
+		println!("Exiting in Dynamic Barrier");
 	}
 }
 
 // Clones barrier with correct receiver for child thread.
-impl Clone for DynamicBarrier
+impl Clone for DynamicHurdle
 {
 	fn clone(&self) -> Self
 	{
 		let receivers = self.rx.receivers.as_ref();
 
-		DynamicBarrier
+		DynamicHurdle
 		{
 			rx: BarrierRecv { receivers: None, receiver: Some(receivers.unwrap()[self.cur as usize].clone()) },
 			tx: self.tx.clone(),
@@ -135,3 +135,10 @@ impl Clone for DynamicBarrier
 		}
 	}
 }
+
+// impl Drop for DynamicHurdle {
+// 	fn drop(&mut self)
+// 	{
+// 		self.exit();
+// 	}
+// }
