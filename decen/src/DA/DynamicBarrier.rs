@@ -1,16 +1,10 @@
-use std::sync::mpsc::{channel, Sender, Receiver};
-use std::sync::{Arc, Mutex};
-use std::mem::drop;
-
-// Channel receiver types.
-type RxVec = Option<Vec<Arc<Mutex<Receiver<Barrier>>>>>;
-type Rx = Option<Arc<Mutex<Receiver<Barrier>>>>;
+use crossbeam::channel::{unbounded, Sender, Receiver};
 
 // Internal struct for channel receiver.
 struct BarrierRecv
 {
-	receivers: RxVec,
-	receiver: Rx,
+	receivers: Option<Vec<Receiver<Barrier>>>,
+	receiver: Option<Receiver<Barrier>>,
 }
 
 // Signal to send in channels at wait and exit.
@@ -38,15 +32,15 @@ impl DynamicHurdle
 	// Returns new barrier for the main thread.
 	pub fn new(threads: usize) -> DynamicHurdle
 	{
-		let mut receivers: Vec<Arc<Mutex<Receiver<Barrier>>>> = Vec::with_capacity(threads);
+		let mut receivers: Vec<Receiver<Barrier>> = Vec::with_capacity(threads);
 		let mut transmitters: Vec<Sender<Barrier>> = Vec::with_capacity(threads);
 		
 		for _ in 0..threads
 		{
-			let (tx, rx) = channel::<Barrier>();
+			let (tx, rx) = unbounded();
 
 			transmitters.push(tx);
-			receivers.push(Arc::new(Mutex::new(rx)));
+			receivers.push(rx);
 		}
 
 		DynamicHurdle
@@ -64,6 +58,11 @@ impl DynamicHurdle
 	pub fn create(&mut self) -> DynamicHurdle
 	{
 		self.cur += 1;
+		if (self.cur as usize) >= self.threads
+		{
+			panic!("Exceeded number of threads");
+		}
+
 		self.clone()
 	}
 
@@ -86,17 +85,14 @@ impl DynamicHurdle
 				break;
 			}
 
-			match rx.lock().unwrap().recv()
+			match rx.recv()
 			{
 				Ok(barrier) =>
 				{
-					if barrier == Barrier::AtCheckPoint
+					match barrier
 					{
-						self.count += 1;
-					}
-					else
-					{
-						self.threads -= 1;
+						Barrier::AtCheckPoint => self.count += 1,
+						Barrier::Exit => self.threads -= 1,
 					}
 				},
 				Err(_) => continue
@@ -109,13 +105,8 @@ impl DynamicHurdle
 	{
 		for tx in self.tx.clone()
 		{
-			match tx.send(Barrier::Exit)
-			{
-				Ok(_) => drop(tx),
-				Err(_) => continue
-			}
+			tx.send(Barrier::Exit).ok();
 		}
-		println!("Exiting in Dynamic Barrier");
 	}
 }
 
@@ -124,11 +115,11 @@ impl Clone for DynamicHurdle
 {
 	fn clone(&self) -> Self
 	{
-		let receivers = self.rx.receivers.as_ref();
+		let receivers = self.rx.receivers.as_ref().unwrap();
 
 		DynamicHurdle
 		{
-			rx: BarrierRecv { receivers: None, receiver: Some(receivers.unwrap()[self.cur as usize].clone()) },
+			rx: BarrierRecv { receivers: None, receiver: Some(receivers[self.cur as usize].clone()) },
 			tx: self.tx.clone(),
 			cur: self.cur,
 			..*self
@@ -136,9 +127,10 @@ impl Clone for DynamicHurdle
 	}
 }
 
-// impl Drop for DynamicHurdle {
-// 	fn drop(&mut self)
-// 	{
-// 		self.exit();
-// 	}
-// }
+impl Drop for DynamicHurdle
+{
+	fn drop(&mut self)
+	{
+		self.exit();
+	}
+}
