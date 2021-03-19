@@ -9,7 +9,7 @@ Simply go into any of the named directories (e.g. Brett or Ellie) and run `rustc
 
 ### Decentralized A*
 
-In the "decen" folder, run `rustc DA.rs` and then `./DA`.
+In the "decen" folder, run `cargo build` and then `cargo run`.
 
 ### KPBFS
 
