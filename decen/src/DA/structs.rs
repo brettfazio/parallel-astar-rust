@@ -44,16 +44,6 @@ pub struct Point
 	pub y: i32
 }
 
-/*
-impl Point
-{
-	pub fn new(x: i32, y: i32) -> Point
-	{
-		Point { x, y }
-	}
-}
-*/
-
 impl Default for Point
 {
 	fn default() -> Point
@@ -62,6 +52,7 @@ impl Default for Point
 	}
 }		
 
+// Node struct for nodes in graph.
 #[derive(Eq, Hash, Clone, Copy, Default, Debug)]
 pub struct Node
 {

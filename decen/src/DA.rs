@@ -5,24 +5,22 @@ use std::mem::drop;
 use std::collections::{HashSet, BinaryHeap, hash_map};
 use hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-// use std::sync::mpsc::{channel, Sender, Receiver};
 use std::sync::{Arc, Mutex, atomic};
 use atomic::{AtomicU64, Ordering};
 use crossbeam::channel::{Sender, Receiver, unbounded};
 
 mod structs;
 use structs::{Incumbent, Node, Point, Buffer};
-
-// PascalCase
 mod DynamicBarrier;
 use DynamicBarrier::DynamicHurdle;
+
 const NUMTHREADS: usize = 8;
 
 // Euclidean Distance
 fn distance(node: Node, end: Node) -> i128
 {
-	(((end.position.x - node.position.x).pow(2) + (end.position.y - node.position.y).pow(2)) 
-	as f32).sqrt() as i128
+	(((end.position.x - node.position.x).pow(2) + (end.position.y - node.position.y).pow(2)) as f32)
+		.sqrt() as i128
 }
 
 pub fn setup(graph: Vec<Vec<char>>) 
@@ -36,7 +34,7 @@ pub fn setup(graph: Vec<Vec<char>>)
 	let sentMessages = Arc::new(AtomicU64::new(0));
 	let receivedMessages = Arc::new(AtomicU64::new(0));
 
-	// Declares Channels
+	// Declares channels
 	for _ in 0..NUMTHREADS
 	{
 		let (tx, rx) = unbounded();
@@ -69,14 +67,13 @@ pub fn setup(graph: Vec<Vec<char>>)
 	let incumbent: Arc<Mutex<Incumbent>> = Arc::new(Mutex::new(Incumbent::new(start, i128::MAX)));
 
 	// Here, we would give each thread a different node to start on.
-	// Those threads would run a* on each of their respective start nodes.
+	// Those threads would run A* on each of their respective start nodes.
 	for i in 0..NUMTHREADS
 	{
 		let transmitters = transmitters.clone();
 		let incumbent = incumbent.clone();
 		let graph = graph.clone();
 		let barrier = barrier.create();
-		// let rx = receivers[i].clone();
 		let rx = receivers[i].clone();
 		let sentMessages = sentMessages.clone();
 		let receivedMessages = receivedMessages.clone();
@@ -87,6 +84,8 @@ pub fn setup(graph: Vec<Vec<char>>)
 		}))
 	}
 
+	// When receiver is cloned, an instance of it remains alive in main.
+	// We drop so that only the single clone has a reference to the receiver.
 	drop(receivers);
 
 	// Final answer is outputted once all threads are done.
@@ -104,12 +103,13 @@ fn search(start: Node, threadNum: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Bu
 	        sentMessages: Arc<AtomicU64>, receivedMessages: Arc<AtomicU64>)
 {
 	let mut buffer: BinaryHeap<Buffer> = BinaryHeap::new();
+	let mut closed_list: HashSet<Node> = HashSet::new();
 	let mut open: BinaryHeap<Node> = BinaryHeap::new();
 	let mut open_list: HashSet<Node> = HashSet::new();
-	let mut closed_list: HashSet<Node> = HashSet::new();
-	let mut firstIteration: bool = true;
 	let mut tried: HashSet<i32> = HashSet::new();	
-	let mut dropBuff: bool = false;
+	let mut firstIteration: bool = true;
+	let mut exit: bool = false;
+	
 	// Giving appropriate lists start variable.
 	open.push(start);
 	open_list.insert(start);
@@ -118,25 +118,21 @@ fn search(start: Node, threadNum: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Bu
 
 	loop
 	{
-		// Loops until we have no more data to add to buffer list.
-		
+		// Initial thread synchronization before checking for count and messages.
 		barrier.wait();
 		
 		if !firstIteration && sentMessages.load(Ordering::SeqCst) == receivedMessages.load(Ordering::SeqCst)
-		{
-			//println!("terminating: {} vs {} in {}", sentMessages.load(Ordering::SeqCst), receivedMessages.load(Ordering::SeqCst), threadNum);
-
+		{			
 			break;
 		}
-
-		barrier.wait();
-		//println!("{} vs {} in {}", sentMessages.load(Ordering::SeqCst), receivedMessages.load(Ordering::SeqCst), threadNum);
-
-		firstIteration = false;
 		
+		// Barrier wait forces all threads to read the same receivedMessage count.
+		barrier.wait();
+		firstIteration = false;
+
+		// Loops until we have no more data to add to buffer list (no more messages received).
 		loop
 		{
-			// Receive transmissions until there are none.
 			match rx.try_recv()
 			{
 				Ok(v) =>
@@ -148,16 +144,15 @@ fn search(start: Node, threadNum: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Bu
 			}
 		}
 		
-		if dropBuff
+		// Receiver and barrier are implicitely dropped, no need to drop them.
+		if exit
 		{
-			drop(rx);
 			break;
 		}
 
 		// Loop until buffer is empty.
 		while !buffer.is_empty()
 		{
-			//println!("buffer list ain't empty ;o");
 			let Buffer(node, weight, parent) = buffer.pop().unwrap();
 
 			if closed_list.contains(&node)
@@ -193,10 +188,7 @@ fn search(start: Node, threadNum: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Bu
 
 		// Safe guards before we check if node is goal node.
 		let mut incumbentData = incumbent.lock().unwrap();
-		// All threads fail this check after one returns
 		
-		// peek returns node with lowest f value
-
 		if open.is_empty() || open.peek().unwrap().f >= incumbentData.cost
 		{
 			continue;
@@ -208,19 +200,16 @@ fn search(start: Node, threadNum: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Bu
 		open_list.remove(&tempNode);
 		closed_list.insert(tempNode);
 		
-		// Check if goal node.
 		if tempNode == goalNode && incumbentData.cost >= tempNode.g
 		{
 			incumbentData.node = tempNode;
 			incumbentData.cost = tempNode.g;
-			//println!("cost to goal node is {}", incumbentData.cost);
-
 			
-			// incumbentData is dropped implicitly since scope is left.
-			
-			dropBuff = true;
+			// Defer exiting thread to start of the loop after receiving any final messages.
+			exit = true;
 		}
 		
+		// Force unlocking so that other threads can access it.
 		drop(incumbentData);
 		
 		let adjacent = vec![(-1, 1), (0, 1), (1, 1), (-1, 0), (1, 0), (-1, -1), (0, -1), (1, -1)];
@@ -239,7 +228,7 @@ fn search(start: Node, threadNum: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Bu
 				
 				loop
 				{
-					let i = computeRecipient(&nPrime, &tried); // calculate random thread to send to
+					let i = computeRecipient(&nPrime, &tried); // calculate hash of node to send to a thread.
 					
 					if i == -1
 					{
@@ -252,12 +241,10 @@ fn search(start: Node, threadNum: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Bu
 						Ok(_) =>
 						{
 							sentMessages.fetch_add(1, Ordering::SeqCst);
-							//println!("From #{} to thread #{}\n\tSending {:?} to thread", threadNum, i, Buffer(nPrime, 1, tempNode));
 							break;
 						},
 						Err(_) =>
 						{
-							//println!("Error in sending :( from {} to {}", threadNum, i);
 							tried.insert(i as i32);
 							
 							if tried.len() < NUMTHREADS
@@ -276,7 +263,8 @@ fn search(start: Node, threadNum: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Bu
 	}
 }
 
-// A non mutually-exlusive function could be the issue
+// Calculate index using hashed node for thread to send Buffer() to.
+// Returns -1 if in last thread.
 fn computeRecipient(node: &Node, setty: &HashSet<i32>) -> i32
 {
 	let mut index;
@@ -308,7 +296,6 @@ fn calculateHash<T: Hash>(t: &T) -> u64
 }
 
 // Basic bounds checking
-// Now we care about walls
 fn isValidNeighbor(graph: &Vec<Vec<char>>, node: &Node, x: i32, y: i32) -> bool
 {
 	let (x0, y0) = (node.position.x + x, node.position.y + y);

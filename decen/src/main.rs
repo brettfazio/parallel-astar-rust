@@ -21,5 +21,4 @@ fn main() {
 	}
 
 	DA::setup(graph);
-	//println!("{:?}", graph);
 }
