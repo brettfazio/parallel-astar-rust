@@ -2,14 +2,13 @@ use grid::Grid;
 use std::collections::{BinaryHeap, HashSet};
 use std::mem::drop;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
-use std::sync::{Arc, Barrier, Mutex};
+use std::sync::{Arc, Mutex};
 use std::{thread, time};
 
 use rand::Rng;
 
 mod temp_structs;
-use temp_structs::{Buffer, Incubent, Node, Point};
+use temp_structs::{Node, Point};
 
 // Best performance seen with high threading, threads > cores
 const NUMTHREADS: usize = 32;
@@ -98,8 +97,8 @@ fn is_valid(x: usize, y: usize, graph: &Grid<char>) -> bool {
 }
 
 fn search(
-    start: Node,
-    id: usize,
+    _start: Node,
+    _id: usize,
     goal_node: Node,
     open: Arc<Mutex<BinaryHeap<Node>>>,
     open_list: Arc<Mutex<HashSet<Node>>>,
@@ -122,9 +121,9 @@ fn search(
         drop(pq);
         // If this is equal to the goal node
         if node == goal_node {
-            println!("found goal!");
+            println!("found goal! ({},{}).g cost={}", node.position.x, node.position.y, node.g);
             //  Store this and notfiy other threads
-            finished.swap(true, Ordering::Relaxed);
+            finished.swap(true, Ordering::SeqCst);
             return;
         }
 
@@ -198,11 +197,11 @@ pub fn setup(graph: Grid<char>) {
     let mut threads = Vec::with_capacity(NUMTHREADS);
 
     // KPBFS uses global open and close lists
-    let mut open: Arc<Mutex<BinaryHeap<Node>>> = Arc::new(Mutex::new(BinaryHeap::new()));
-    let mut open_list: Arc<Mutex<HashSet<Node>>> = Arc::new(Mutex::new(HashSet::new()));
-    let mut closed_list: Arc<Mutex<HashSet<Node>>> = Arc::new(Mutex::new(HashSet::new()));
+    let open: Arc<Mutex<BinaryHeap<Node>>> = Arc::new(Mutex::new(BinaryHeap::new()));
+    let open_list: Arc<Mutex<HashSet<Node>>> = Arc::new(Mutex::new(HashSet::new()));
+    let closed_list: Arc<Mutex<HashSet<Node>>> = Arc::new(Mutex::new(HashSet::new()));
 
-    let mut finished: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+    let finished: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 
     let mut startx: i32 = 0;
     let mut starty: i32 = 0;

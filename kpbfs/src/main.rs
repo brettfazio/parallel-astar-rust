@@ -1,10 +1,10 @@
-mod KPBFS;
+mod kpbfs;
 use grid::Grid;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 fn main() {
-    let filename = "../data/sample1.in";
+    let filename = "../data/small1.in";
     let file = File::open(filename).unwrap();
     let mut reader = BufReader::new(file).lines();
 
@@ -25,5 +25,5 @@ fn main() {
 
     // println!("{:?}", grid);
 
-    KPBFS::setup(grid);
+    kpbfs::setup(grid);
 }
