@@ -2,7 +2,7 @@
 use grid::Grid;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::collections::{HashSet, BinaryHeap};
+use std::collections::{HashSet, VecDeque};
 
 mod temp_structs;
 use temp_structs::{Node, Point};
@@ -18,7 +18,7 @@ fn is_valid(x: usize, y: usize, graph: &Grid<char>) -> bool {
 }
 
 fn main() {
-    let filename = "../data/medium3.in";
+    let filename = "../data/small1.in";
     let file = File::open(filename).unwrap();
     let mut reader = BufReader::new(file).lines();
 
@@ -37,9 +37,8 @@ fn main() {
         cols,
     );
 
-    let mut queue: BinaryHeap<Node> = BinaryHeap::new();
+    let mut queue: VecDeque<Node> = VecDeque::new();
     let mut closed: HashSet<Node> = HashSet::new();
-    let mut open: HashSet<Node> = HashSet::new();
 
     let mut startx: i32 = 0;
     let mut starty: i32 = 0;
@@ -64,23 +63,21 @@ fn main() {
     let mut start = Node::new(startx, starty, 0, 0, 0, Point::default());
     let end = Node::new(endx, endy, 0, 0, 0, Point::default());
 
-    queue.push(start);
+    queue.push_back(start);
 
     while queue.len() > 0
     {
         // Know queue.len() > 0 so can force unwrap.
-        let pop = queue.pop().unwrap();
-
-        //println!("{},{}", pop.position.x, pop.position.y);
-
+        let pop = queue.pop_front().unwrap();
         if pop.position.x == end.position.x && pop.position.y == end.position.y
         {
             println!("Goal found {} steps!", pop.g);
+            break;
         }
 
-        if open.contains(&pop)
+        if closed.contains(&pop)
         {
-            if open.get(&pop).unwrap().g < pop.g
+            if closed.get(&pop).unwrap().g < pop.g
             {
                 continue;
             }
@@ -115,22 +112,8 @@ fn main() {
                         continue;
                     }
                 }
-
-                if open.contains(&n_prime)
-                {
-                    if open.get(&n_prime).unwrap().g > n_prime.g
-                    {
-                        open.replace(n_prime);
-                    }
-                    else
-                    {
-                        continue;
-                    }
-                }
-
-                open.insert(n_prime);
                 closed.insert(n_prime);
-                queue.push(n_prime);
+                queue.push_back(n_prime);
             }
         }
     }
