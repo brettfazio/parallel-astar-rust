@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 fn main() {
-    let filename = "../data/small1.in";
+    let filename = "../data/medium1.in";
     let file = File::open(filename).unwrap();
     let mut reader = BufReader::new(file).lines();
 

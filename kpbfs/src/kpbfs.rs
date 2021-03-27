@@ -1,5 +1,5 @@
 use grid::Grid;
-use std::collections::{BinaryHeap, HashSet};
+use std::collections::{BinaryHeap, HashMap};
 use std::mem::drop;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -11,7 +11,7 @@ mod temp_structs;
 use temp_structs::{Node, Point};
 
 // Best performance seen with high threading, threads > cores
-const NUMTHREADS: usize = 32;
+const NUMTHREADS: usize = 1;
 
 #[derive(PartialEq)]
 enum HeurType {
@@ -98,27 +98,30 @@ fn is_valid(x: usize, y: usize, graph: &Grid<char>) -> bool {
 
 fn search(
     _start: Node,
-    _id: usize,
+    id: usize,
     goal_node: Node,
     open: Arc<Mutex<BinaryHeap<Node>>>,
-    open_list: Arc<Mutex<HashSet<Node>>>,
-    closed_list: Arc<Mutex<HashSet<Node>>>,
+    closed_list: Arc<Mutex<HashMap<Point, Node>>>,
     finished: &AtomicBool,
     graph: Grid<char>,
 ) {
     loop {
-        if finished.load(Ordering::Relaxed) {
+        if finished.load(Ordering::SeqCst) {
             return;
         }
-
         // wait for open to have node and try getting node
         let mut pq = open.lock().unwrap();
+
         if pq.len() == 0 {
             continue;
         }
+        println!("beg {}", pq.len());
 
         let node = pq.pop().unwrap();
         drop(pq);
+
+        //println!("({},{}).g cost={} {}.h {}.f", node.position.x, node.position.y, node.g, node.h, node.f);
+        println!("fff");
         // If this is equal to the goal node
         if node == goal_node {
             println!("found goal! ({},{}).g cost={}", node.position.x, node.position.y, node.g);
@@ -127,15 +130,18 @@ fn search(
             return;
         }
 
+        println!("fffffff");
+
         // Check the closed list
         let mut cl = closed_list.lock().unwrap();
-        if cl.contains(&node) {
-            if cl.get(&node).unwrap().g > node.g {
-                cl.remove(&node);
-            } else {
+        if cl.contains_key(&node.position) {
+            if cl.get(&node.position).unwrap().g <= node.g {
                 continue;
             }
         }
+        println!("ffffffffffffffff");
+        cl.insert(node.position, node);
+        println!("{}", cl.len());
         // Release the lock.
         drop(cl);
 
@@ -145,12 +151,13 @@ fn search(
         for (x, y) in adjacent {
             let n_x = node.position.x + x;
             let n_y = node.position.y + y;
-
+            println!("begin {},{}", n_x, n_y);
             if n_x < 0 || n_y < 0 {
                 continue;
             }
 
             if is_valid(n_x as usize, n_y as usize, &graph) {
+                println!("found new valid at {},{}", n_x, n_y);
                 // x: i32, y: i32, f: i128, g: i128, h: i128, parent: Point
                 let mut n_prime = Node::new(n_x, n_y, 0, node.g + 1, 0, node.position);
                 n_prime.h = heuristic(n_prime, goal_node);
@@ -158,37 +165,23 @@ fn search(
 
                 // check if closed list contains it
                 let mut prime_cl = closed_list.lock().unwrap();
-                if prime_cl.contains(&n_prime) {
-                    if prime_cl.get(&n_prime).unwrap().g > n_prime.g {
-                        prime_cl.remove(&n_prime);
-                    } else {
+                if prime_cl.contains_key(&n_prime.position) {
+                    if prime_cl.get(&n_prime.position).unwrap().g <= n_prime.g {
                         continue;
                     }
                 }
+                prime_cl.insert(n_prime.position, n_prime);
                 // Release the lock.
                 drop(prime_cl);
 
-                // do same for open list
-                let mut prime_ol = open_list.lock().unwrap();
-                if prime_ol.contains(&n_prime) {
-                    if prime_ol.get(&n_prime).unwrap().g > n_prime.g {
-                        prime_ol.remove(&n_prime);
-                    } else {
-                        continue;
-                    }
-                }
-
-                // add to open list
-                prime_ol.insert(n_prime);
-
-                // Release the lock.
-                drop(prime_ol);
-
                 // add to pq
+                println!("huh? {} {}", n_prime.position.x, n_prime.position.y);
                 add_pq.push(n_prime);
             }
         }
-
+        
+        println!("add_pqlen={}", add_pq.len());
+        drop(add_pq);
         // add_pq goes out of scope here.
     }
 }
@@ -198,8 +191,7 @@ pub fn setup(graph: Grid<char>) {
 
     // KPBFS uses global open and close lists
     let open: Arc<Mutex<BinaryHeap<Node>>> = Arc::new(Mutex::new(BinaryHeap::new()));
-    let open_list: Arc<Mutex<HashSet<Node>>> = Arc::new(Mutex::new(HashSet::new()));
-    let closed_list: Arc<Mutex<HashSet<Node>>> = Arc::new(Mutex::new(HashSet::new()));
+    let closed_list: Arc<Mutex<HashMap<Point, Node>>> = Arc::new(Mutex::new(HashMap::new()));
 
     let finished: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 
@@ -230,15 +222,14 @@ pub fn setup(graph: Grid<char>) {
 
     // Add to open
     let mut init_open = open.lock().unwrap();
-    let mut init_ol = open_list.lock().unwrap();
+    let mut init_cl = closed_list.lock().unwrap();
     init_open.push(start);
-    init_ol.insert(start);
+    init_cl.insert(start.position, start);
     drop(init_open);
-    drop(init_ol);
+    drop(init_cl);
 
     for i in 0..NUMTHREADS {
         let clone_open = Arc::clone(&open);
-        let clone_open_list = Arc::clone(&open_list);
         let clone_closed_list = Arc::clone(&closed_list);
         let clone_fin = Arc::clone(&finished);
         let graph = graph.clone();
@@ -249,7 +240,6 @@ pub fn setup(graph: Grid<char>) {
                 i,
                 end,
                 clone_open,
-                clone_open_list,
                 clone_closed_list,
                 &clone_fin,
                 graph,
