@@ -5,3 +5,6 @@
 
 # Cargo
 **/target
+
+# Mac
+.DS_Store
