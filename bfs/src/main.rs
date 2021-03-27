@@ -77,7 +77,7 @@ fn main() {
 
         if closed.contains_key(&pop.position)
         {
-            if closed.get(&pop.position).unwrap().g < pop.g
+            if closed.get(&pop.position).unwrap().g <= pop.g
             {
                 continue;
             }

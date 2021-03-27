@@ -11,7 +11,7 @@ mod temp_structs;
 use temp_structs::{Node, Point};
 
 // Best performance seen with high threading, threads > cores
-const NUMTHREADS: usize = 1;
+const NUMTHREADS: usize = 32;
 
 #[derive(PartialEq)]
 enum HeurType {
@@ -116,8 +116,6 @@ fn search(
             continue;
         }
 
-        println!("{}", pq.len());
-
         let node = pq.pop().unwrap();
         drop(pq);
 
@@ -141,6 +139,8 @@ fn search(
         // Release the lock.
         drop(cl);
 
+        //println!("{},{} g={}", node.position.x, node.position.y, node.g);
+
         let adjacent = vec![(0, 1), (-1, 0), (1, 0), (0, -1)];
 
         let mut add_pq = open.lock().unwrap();
@@ -160,7 +160,7 @@ fn search(
                 // check if closed list contains it
                 let mut prime_cl = closed_list.lock().unwrap();
                 if prime_cl.contains_key(&n_prime.position) {
-                    if prime_cl.get(&n_prime.position).unwrap().g < n_prime.g {
+                    if prime_cl.get(&n_prime.position).unwrap().g <= n_prime.g {
                         continue;
                     }
                 }
