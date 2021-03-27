@@ -115,33 +115,29 @@ fn search(
         if pq.len() == 0 {
             continue;
         }
-        println!("beg {}", pq.len());
+
+        println!("{}", pq.len());
 
         let node = pq.pop().unwrap();
         drop(pq);
 
-        //println!("({},{}).g cost={} {}.h {}.f", node.position.x, node.position.y, node.g, node.h, node.f);
-        println!("fff");
         // If this is equal to the goal node
-        if node == goal_node {
+        if node.position.x == goal_node.position.x && node.position.y == goal_node.position.y
+        {
             println!("found goal! ({},{}).g cost={}", node.position.x, node.position.y, node.g);
             //  Store this and notfiy other threads
             finished.swap(true, Ordering::SeqCst);
             return;
         }
 
-        println!("fffffff");
-
         // Check the closed list
         let mut cl = closed_list.lock().unwrap();
         if cl.contains_key(&node.position) {
-            if cl.get(&node.position).unwrap().g <= node.g {
+            if cl.get(&node.position).unwrap().g < node.g {
                 continue;
             }
         }
-        println!("ffffffffffffffff");
         cl.insert(node.position, node);
-        println!("{}", cl.len());
         // Release the lock.
         drop(cl);
 
@@ -151,13 +147,11 @@ fn search(
         for (x, y) in adjacent {
             let n_x = node.position.x + x;
             let n_y = node.position.y + y;
-            println!("begin {},{}", n_x, n_y);
             if n_x < 0 || n_y < 0 {
                 continue;
             }
 
             if is_valid(n_x as usize, n_y as usize, &graph) {
-                println!("found new valid at {},{}", n_x, n_y);
                 // x: i32, y: i32, f: i128, g: i128, h: i128, parent: Point
                 let mut n_prime = Node::new(n_x, n_y, 0, node.g + 1, 0, node.position);
                 n_prime.h = heuristic(n_prime, goal_node);
@@ -166,7 +160,7 @@ fn search(
                 // check if closed list contains it
                 let mut prime_cl = closed_list.lock().unwrap();
                 if prime_cl.contains_key(&n_prime.position) {
-                    if prime_cl.get(&n_prime.position).unwrap().g <= n_prime.g {
+                    if prime_cl.get(&n_prime.position).unwrap().g < n_prime.g {
                         continue;
                     }
                 }
@@ -175,12 +169,10 @@ fn search(
                 drop(prime_cl);
 
                 // add to pq
-                println!("huh? {} {}", n_prime.position.x, n_prime.position.y);
                 add_pq.push(n_prime);
             }
         }
         
-        println!("add_pqlen={}", add_pq.len());
         drop(add_pq);
         // add_pq goes out of scope here.
     }

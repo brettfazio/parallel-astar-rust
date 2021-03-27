@@ -103,7 +103,7 @@ fn main() {
 
                 if closed.contains_key(&n_prime.position)
                 {
-                    if closed.get(&n_prime.position).unwrap().g <= n_prime.g
+                    if closed.get(&n_prime.position).unwrap().g < n_prime.g
                     {
                         continue;
                     }
