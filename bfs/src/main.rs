@@ -2,7 +2,7 @@
 use grid::Grid;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 
 mod temp_structs;
 use temp_structs::{Node, Point};
@@ -18,7 +18,7 @@ fn is_valid(x: usize, y: usize, graph: &Grid<char>) -> bool {
 }
 
 fn main() {
-    let filename = "../data/small1.in";
+    let filename = "../data/medium1.in";
     let file = File::open(filename).unwrap();
     let mut reader = BufReader::new(file).lines();
 
@@ -38,7 +38,7 @@ fn main() {
     );
 
     let mut queue: VecDeque<Node> = VecDeque::new();
-    let mut closed: HashSet<Node> = HashSet::new();
+    let mut closed: HashMap<Point, Node> = HashMap::new();
 
     let mut startx: i32 = 0;
     let mut starty: i32 = 0;
@@ -75,15 +75,15 @@ fn main() {
             break;
         }
 
-        if closed.contains(&pop)
+        if closed.contains_key(&pop.position)
         {
-            if closed.get(&pop).unwrap().g < pop.g
+            if closed.get(&pop.position).unwrap().g < pop.g
             {
                 continue;
             }
         }
 
-        closed.insert(pop);
+        closed.insert(pop.position, pop);
 
         let adjacent = vec![(0, 1), (-1, 0), (1, 0), (0, -1)];
 
@@ -101,18 +101,14 @@ fn main() {
             {
                 let mut n_prime = Node::new(n_x, n_y, 0, pop.g + 1, 0, pop.position);
 
-                if closed.contains(&n_prime)
+                if closed.contains_key(&n_prime.position)
                 {
-                    if closed.get(&n_prime).unwrap().g > n_prime.g
-                    {
-                        closed.replace(n_prime);
-                    }
-                    else
+                    if closed.get(&n_prime.position).unwrap().g <= n_prime.g
                     {
                         continue;
                     }
                 }
-                closed.insert(n_prime);
+                closed.insert(n_prime.position, n_prime);
                 queue.push_back(n_prime);
             }
         }
