@@ -8,3 +8,5 @@ edition = "2018"
 
 [dependencies]
 crossbeam = "0.8"
+rand = "0.8.1"
+clap = "2.27.0"

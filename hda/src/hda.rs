@@ -7,14 +7,18 @@ use std::sync::{Arc, Mutex, atomic};
 use atomic::{AtomicU64, Ordering};
 use crossbeam::channel::{Sender, Receiver, unbounded};
 
-mod structs;
-use structs::{Incumbent, Node, Point, Buffer};
+pub mod structs;
 mod dynamic_barrier;
 use dynamic_barrier::DynamicHurdle;
+use structs::{Incumbent, Node, Point, Buffer, HeurType, Flags};
 
 const NUM_THREADS: usize = 8;
 
-pub fn setup(graph: Vec<Vec<char>>) {
+
+
+
+pub fn setup(flags: Flags) {
+    let Flags { heur, graph } = flags;
     let mut threads = Vec::with_capacity(NUM_THREADS);
     let mut receivers: Vec<Receiver<Buffer>> = Vec::with_capacity(NUM_THREADS);
     let mut transmitters: Vec<Sender<Buffer>> = Vec::with_capacity(NUM_THREADS);
@@ -27,7 +31,7 @@ pub fn setup(graph: Vec<Vec<char>>) {
     // Declares channels
     for _ in 0..NUM_THREADS {
         let (tx, rx) = unbounded();
-            
+
         transmitters.push(tx);
         receivers.push(rx);
     }
@@ -47,24 +51,24 @@ pub fn setup(graph: Vec<Vec<char>>) {
 
     let mut start = Node::new(start_point.x, start_point.y, 0, 0, 0, Point::default());
     let end = Node::new(end_point.x, end_point.y, 0, 0, 0, Point::default());
-    start.h = distance(start, end);
+    start.h = heuristic(start, end, &flags.heur);
     start.f = start.g + start.h;
     let incumbent: Arc<Mutex<Incumbent>> = Arc::new(Mutex::new(Incumbent::new(start, i128::MAX)));
-
     // Here, we would give each thread a different node to start on.
     // Those threads would run A* on each of their respective start nodes.
     for i in 0..NUM_THREADS {
         let transmitters = transmitters.clone();
         let incumbent = incumbent.clone();
-        let graph = graph.clone();
         let barrier = barrier.create();
         let rx = receivers[i].clone();
         let sent_messages = sent_messages.clone();
         let received_messages = received_messages.clone();
+        let flags = Flags { graph: graph.clone(), heur };
 
         // Here we'd pass a start node to each thread.
         threads.push(thread::spawn(move || {
-            search(start, rx, transmitters, barrier, end, incumbent, graph.clone(), sent_messages, received_messages);
+            search(start, rx, transmitters, barrier, end,
+                   incumbent, sent_messages, received_messages, flags);
         }))
     }
 
@@ -81,8 +85,8 @@ pub fn setup(graph: Vec<Vec<char>>) {
 }
 
 fn search(start: Node, rx: Receiver<Buffer>, tx: Vec<Sender<Buffer>>,
-          mut barrier: DynamicHurdle, goal_node: Node, incumbent: Arc<Mutex<Incumbent>>, graph: Vec<Vec<char>>,
-          sent_messages: Arc<AtomicU64>, received_messages: Arc<AtomicU64>) {
+          mut barrier: DynamicHurdle, goal_node: Node, incumbent: Arc<Mutex<Incumbent>>,
+          sent_messages: Arc<AtomicU64>, received_messages: Arc<AtomicU64>, flags: Flags) {
     let mut closed_list: HashSet<Node> = HashSet::new();
     let mut open: BinaryHeap<Node> = BinaryHeap::new();
     let mut open_list: HashSet<Node> = HashSet::new();
@@ -130,7 +134,7 @@ fn search(start: Node, rx: Receiver<Buffer>, tx: Vec<Sender<Buffer>>,
                     }
 
                     let mut new_node = Node { g: weight, parent: parent.position, ..node };
-                    new_node.h = distance(new_node, goal_node);
+                    new_node.h = heuristic(new_node, goal_node, &flags.heur);
                     new_node.f = new_node.g + new_node.h;
                     open_list.insert(new_node);
                     open.push(new_node);
@@ -174,7 +178,7 @@ fn search(start: Node, rx: Receiver<Buffer>, tx: Vec<Sender<Buffer>>,
         // to random thread's buffer list.
         for (x, y) in adjacent {
             // Safe guard before we test a movement
-            if is_valid_neighbor(&graph, &temp_node, x, y) {
+            if is_valid_neighbor(&flags.graph, &temp_node, x, y) {
                 // n' is created, now let's put it in a random buffered list.
                 let (x_coordinate, y_coordinate) = (temp_node.position.x + x, temp_node.position.y + y);
                 let n_prime = Node::new(x_coordinate, y_coordinate, 0, temp_node.g + 1, 0, temp_node.position);
@@ -204,12 +208,27 @@ fn search(start: Node, rx: Receiver<Buffer>, tx: Vec<Sender<Buffer>>,
     }
 }
 
-fn distance(node: Node, end: Node) -> i128 {
+fn manhattan_distance(node: Node, end: Node) -> i128 {
     ((node.position.x - end.position.x).abs() + (node.position.y - end.position.y).abs()) as i128
 }
 
-// Calculate index using hashed node for thread to send Buffer() to.
-// Returns -1 if in last thread.
+/// Euclidean Distance
+fn euclid_distance(node: Node, end: Node) -> i128 {
+	(((end.position.x - node.position.x).pow(2) + (end.position.y - node.position.y).pow(2)) as f32)
+		.sqrt() as i128
+}
+
+
+fn heuristic(node: Node, end: Node, heur: &HeurType) -> i128 {
+    match heur {
+        EuclideanDist => euclid_distance(node, end),
+        ManhattanDist => manhattan_distance(node, end),
+        _ => 0
+    }
+}
+
+/// Calculate index using hashed node for thread to send Buffer() to.
+/// Returns -1 if in last thread.
 fn compute_recipient(node: &Node, setty: &HashSet<i32>) -> i32 {
     let mut index;
     let hash = calculate_hash(&node);
@@ -235,9 +254,10 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
     state.finish()
 }
 
-// Basic bounds checking
+/// Basic bounds checking
 fn is_valid_neighbor(graph: &Vec<Vec<char>>, node: &Node, x: i32, y: i32) -> bool {
     let (x0, y0) = (node.position.x + x, node.position.y + y);
 
-    x0 >= 0 && y0 >= 0 && x0 < graph.len() as i32 && y0 < graph.len() as i32 && graph[x0 as usize][y0 as usize] != 'W'
+    x0 >= 0 && y0 >= 0 && x0 < graph.len() as i32 && y0 < graph.len() as i32
+        && graph[x0 as usize][y0 as usize] != 'W'
 }
