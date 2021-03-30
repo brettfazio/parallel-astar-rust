@@ -5,7 +5,7 @@ public class gen_grid {
     public static void main(String[] args) {
         Scanner in = new Scanner(System.in);
 
-        int n = 10;
+        int n = 5000;
 
         int x1 = random(0, n - 1); // start
         int y1 = random(0, n - 1);

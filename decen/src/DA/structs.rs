@@ -1,5 +1,6 @@
 use std::default::Default;
 use std::cmp::Ordering;
+use std::hash::{Hash, Hasher};
 
 // Goal node path and cost of path.
 pub struct Incumbent
@@ -53,7 +54,7 @@ impl Default for Point
 }		
 
 // Node struct for nodes in graph.
-#[derive(Eq, Hash, Clone, Copy, Default, Debug)]
+#[derive(Clone, Copy, Default, Debug)]
 pub struct Node
 {
 	pub position: Point,
@@ -90,10 +91,20 @@ impl PartialOrd for Node
 	}
 }
 
+impl Eq for Node {}
+
 impl PartialEq for Node
 {
 	fn eq(&self, other: &Self) -> bool 
 	{
 		self.position == other.position
+	}
+}
+
+impl Hash for Node
+{
+	fn hash<H: Hasher>(&self, state: &mut H)
+	{
+		self.position.hash(state);
 	}
 }
