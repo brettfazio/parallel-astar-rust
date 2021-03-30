@@ -18,7 +18,7 @@ fn is_valid(x: usize, y: usize, graph: &Grid<char>) -> bool {
 }
 
 fn main() {
-    let filename = "../data/medium1.in";
+    let filename = "../data/sample1.in";
     let file = File::open(filename).unwrap();
     let mut reader = BufReader::new(file).lines();
 
@@ -77,7 +77,7 @@ fn main() {
 
         if closed.contains_key(&pop.position)
         {
-            if closed.get(&pop.position).unwrap().g <= pop.g
+            if closed.get(&pop.position).unwrap().g < pop.g
             {
                 continue;
             }
