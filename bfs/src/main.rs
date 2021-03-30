@@ -18,7 +18,7 @@ fn is_valid(x: usize, y: usize, graph: &Grid<char>) -> bool {
 }
 
 fn main() {
-    let filename = "../data/sample1.in";
+    let filename = "../data/medium/medium1.in";
     let file = File::open(filename).unwrap();
     let mut reader = BufReader::new(file).lines();
 
@@ -99,11 +99,12 @@ fn main() {
 
             if is_valid(n_x as usize, n_y as usize, &graph)
             {
+                // x: i32, y: i32, f: i128, g: i128, h: i128, parent: Point
                 let mut n_prime = Node::new(n_x, n_y, 0, pop.g + 1, 0, pop.position);
 
                 if closed.contains_key(&n_prime.position)
                 {
-                    if closed.get(&n_prime.position).unwrap().g < n_prime.g
+                    if closed.get(&n_prime.position).unwrap().g <= n_prime.g
                     {
                         continue;
                     }
