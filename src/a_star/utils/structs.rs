@@ -89,7 +89,10 @@ impl Hash for Node {
 #[derive(PartialEq, Copy, Clone)]
 pub enum HeurType {
     ManhattanDist,
-    EuclideanDist
+    EuclideanDist,
+    Expensive,
+    NonAdmissible,
+    ExpensiveNonAdmissible
 }
 
 /// Configuration struct for command line arguments
