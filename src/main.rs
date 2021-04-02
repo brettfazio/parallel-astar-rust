@@ -82,7 +82,7 @@ fn main() {
     };
 
     let (graph, start, end) = parse_graph(config.value_of("GRAPH"));
-    let mut flags = Flags { graph, heur: HeurType::ManhattanDist };
+    let flags = Flags { graph, heur: heur_type };
     let algo = config.value_of("ALGO").unwrap_or("hda");
 
     match algo {
