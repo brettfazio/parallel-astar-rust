@@ -1,6 +1,9 @@
 use std::{collections::{HashSet, hash_map::DefaultHasher}, hash::{Hash, Hasher}};
 use super::structs::{HeurType, Node};
 
+use std::{thread, time};
+use rand::Rng;
+
 fn euclidean(node: Node, end: Node) -> i128 {
     (((end.position.x - node.position.x).pow(2) + (end.position.y - node.position.y).pow(2)) as f32)
         .sqrt() as i128
@@ -10,10 +13,44 @@ fn manhattan(node: Node, end: Node) -> i128 {
     ((node.position.x - end.position.x).abs() + (node.position.y - end.position.y).abs()) as i128
 }
 
+fn random_wait() {
+    //need to import via cargo
+    let mut rng = rand::thread_rng();
+
+    let time = rng.gen_range(100..1000);
+    let rand_millis = time::Duration::from_millis(time);
+    thread::sleep(rand_millis);
+}
+
+fn expensive(node: Node, end: Node) -> i128 {
+    random_wait();
+
+    euclidean(node, end)
+}
+
+fn non_admissible(node: Node, end: Node, expensive: bool) -> i128 {
+    if expensive {
+        random_wait();
+    }
+
+    let mut rng = rand::thread_rng();
+
+    let percent = rng.gen_range(1.0..100.0);
+
+    let dist = euclidean(node, end);
+
+    let result = (dist as f64) + (percent / 100.0) * (dist as f64);
+
+    result as i128
+}
+
 pub fn heuristic(node: Node, end: Node, heur: &HeurType) -> i128 {
     match heur {
         HeurType::EuclideanDist => euclidean(node, end),
-        HeurType::ManhattanDist => manhattan(node, end)
+        HeurType::ManhattanDist => manhattan(node, end),
+        HeurType::Expensive => expensive(node, end),
+        HeurType::NonAdmissible => non_admissible(node, end, false),
+        HeurType::ExpensiveNonAdmissible => non_admissible(node, end, true)
     }
 }
 

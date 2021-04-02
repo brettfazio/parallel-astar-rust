@@ -43,7 +43,10 @@ fn validate_heuristic(heur: String) -> Result<(), String> {
     match heur.as_str() {
         "euclidean" => Ok(()),
         "manhattan" => Ok(()),
-        _ => Err(String::from("Please input a valid heuristic option [euclidean, manhattan]")),
+        "expensive" => Ok(()),
+        "nonadmissible" => Ok(()),
+        "expnon" => Ok(()),
+        _ => Err(String::from("Please input a valid heuristic option [euclidean, manhattan, expensive, nonadmissible, expnon]")),
     }
 }
 
@@ -68,6 +71,15 @@ fn main() {
     ).get_matches();
 
     // Example cargo run -- --graph large2.in --algo hda
+
+    let heur_type = match config.value_of("HUERISTIC").unwrap_or("euclidean") {
+        "euclidean" => HeurType::EuclideanDist,
+        "manhattan" => HeurType::ManhattanDist,
+        "expensive" => HeurType::Expensive,
+        "nonadmissible" => HeurType::NonAdmissible,
+        "expnon" => HeurType::ExpensiveNonAdmissible,
+        _ => HeurType::EuclideanDist,
+    };
 
     let (graph, start, end) = parse_graph(config.value_of("GRAPH"));
     let mut flags = Flags { graph, heur: HeurType::ManhattanDist };
