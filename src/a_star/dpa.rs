@@ -12,19 +12,17 @@ use super::utils::{
     helpers
 };
 
-const NUM_THREADS: usize = 8;
-
 pub fn setup(start_point: Point, end_point: Point, flags: Flags)  {
     let Flags { heur, graph, threads: thread_cnt } = flags;
-    let mut threads = Vec::with_capacity(NUM_THREADS);
-    let mut receivers: Vec<Receiver<Buffer>> = Vec::with_capacity(NUM_THREADS);
-    let mut transmitters: Vec<Sender<Buffer>> = Vec::with_capacity(NUM_THREADS);
-    let mut barrier = DynamicHurdle::new(NUM_THREADS);
+    let mut threads = Vec::with_capacity(thread_cnt);
+    let mut receivers: Vec<Receiver<Buffer>> = Vec::with_capacity(thread_cnt);
+    let mut transmitters: Vec<Sender<Buffer>> = Vec::with_capacity(thread_cnt);
+    let mut barrier = DynamicHurdle::new(thread_cnt);
     let sent_messages = Arc::new(AtomicU64::new(0));
     let received_messages = Arc::new(AtomicU64::new(0));
 
     // Declares channels
-    for _ in 0..NUM_THREADS {
+    for _ in 0..thread_cnt {
         let (tx, rx) = unbounded();
             
         transmitters.push(tx);
@@ -39,7 +37,7 @@ pub fn setup(start_point: Point, end_point: Point, flags: Flags)  {
 
     // Here, we would give each thread a different node to start on.
     // Those threads would run A* on each of their respective start nodes.
-    for i in 0..NUM_THREADS {
+    for i in 0..thread_cnt {
         let transmitters = transmitters.clone();
         let incumbent = incumbent.clone();
         let graph = graph.clone();
@@ -180,7 +178,7 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
                 let n_prime = Node::new(x_coordinate, y_coordinate, 0, temp_node.g + 1, 0, temp_node.position);
                 
                 loop {
-                    let i = helpers::compute_recipient(&n_prime, &tried, NUM_THREADS as u64); // calculate hash of node to send to a thread.
+                    let i = helpers::compute_recipient(&n_prime, &tried, flags.threads as u64); // calculate hash of node to send to a thread.
                     
                     if i == -1 {
                         buffer.push(Buffer(n_prime, n_prime.g, temp_node));
@@ -195,7 +193,7 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
                         Err(_) => {
                             tried.insert(i as i32);
                             
-                            if tried.len() < NUM_THREADS {
+                            if tried.len() < flags.threads {
                                 continue;
                             }
                             else {
