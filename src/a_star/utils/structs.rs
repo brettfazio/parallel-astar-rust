@@ -98,5 +98,6 @@ pub enum HeurType {
 /// Configuration struct for command line arguments
 pub struct Flags {
     pub graph: Vec<Vec<char>>,
-    pub heur: HeurType
+    pub heur: HeurType,
+    pub threads: usize
 }

@@ -81,8 +81,9 @@ fn main() {
         _ => HeurType::EuclideanDist,
     };
 
+    let threads = config.value_of("NUM_THREADS").unwrap_or("4").parse().unwrap_or(4);
     let (graph, start, end) = parse_graph(config.value_of("GRAPH"));
-    let flags = Flags { graph, heur: heur_type };
+    let flags = Flags { graph, heur: heur_type, threads: threads };
     let algo = config.value_of("ALGO").unwrap_or("hda");
 
     match algo {

@@ -15,7 +15,7 @@ use super::utils::{
 const NUM_THREADS: usize = 8;
 
 pub fn setup(start_point: Point, end_point: Point, flags: Flags)  {
-    let Flags { heur, graph } = flags;
+    let Flags { heur, graph, threads: thread_cnt } = flags;
     let mut threads = Vec::with_capacity(NUM_THREADS);
     let mut receivers: Vec<Receiver<Buffer>> = Vec::with_capacity(NUM_THREADS);
     let mut transmitters: Vec<Sender<Buffer>> = Vec::with_capacity(NUM_THREADS);
@@ -47,7 +47,7 @@ pub fn setup(start_point: Point, end_point: Point, flags: Flags)  {
         let rx = receivers[i].clone();
         let sent_messages = sent_messages.clone();
         let received_messages = received_messages.clone();
-        let flags = Flags { graph: graph.clone(), heur };
+        let flags = Flags { graph: graph.clone(), heur, threads: thread_cnt };
 
         // Here we'd pass a start node to each thread.
         threads.push(thread::spawn(move || {
