@@ -14,6 +14,8 @@ fn fibonacci(n: u64) -> u64 {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
+    // each algo, thread count, heuristic types
+    // algo_#t_heurtype
     //c.bench_function("dpa_8t", )
     c.bench_function("fib 20", |b| b.iter(|| fibonacci(black_box(20))));
 }
