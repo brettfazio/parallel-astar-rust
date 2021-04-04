@@ -1,9 +1,11 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-// use super::a_star::{
-//     utils::structs::{Point, HeurType, Flags},
-//     hda,
-//     dpa
-// };
+mod a_star;
+use a_star::{
+    //utils::structs::{Point, HeurType, Flags},
+    hda,
+    dpa,
+    kpbfs,
+};
 
 fn fibonacci(n: u64) -> u64 {
     match n {
