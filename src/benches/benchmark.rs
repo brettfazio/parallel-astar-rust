@@ -1,4 +1,9 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+// use super::a_star::{
+//     utils::structs::{Point, HeurType, Flags},
+//     hda,
+//     dpa
+// };
 
 fn fibonacci(n: u64) -> u64 {
     match n {
@@ -9,6 +14,7 @@ fn fibonacci(n: u64) -> u64 {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
+    //c.bench_function("dpa_8t", )
     c.bench_function("fib 20", |b| b.iter(|| fibonacci(black_box(20))));
 }
 

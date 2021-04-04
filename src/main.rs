@@ -6,7 +6,8 @@ mod a_star;
 use a_star::{
     utils::structs::{Point, HeurType, Flags},
     hda,
-    dpa
+    dpa,
+    kpbfs
 };
 
 fn parse_graph(graph_file: Option<&str>) -> (Vec<Vec<char>>, Point, Point) {
@@ -89,6 +90,7 @@ fn main() {
     match algo {
         "hda" => hda::setup(start, end, flags),
         "dpa" => dpa::setup(start, end, flags),
+        "kpbfs" => kpbfs::setup(start, end, flags),
         _ => hda::setup(start, end, flags),
     }
 }
