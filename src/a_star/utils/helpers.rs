@@ -1,5 +1,8 @@
 use std::{collections::{HashSet, hash_map::DefaultHasher}, hash::{Hash, Hasher}};
-use super::structs::{HeurType, Node};
+use super::structs::{HeurType, Node, Point};
+
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 
 use std::{thread, time};
 use rand::Rng;
@@ -85,4 +88,34 @@ pub fn compute_recipient(node: &Node, setty: &HashSet<i32>, num_threads: u64) ->
     }
     
     return -1;
+}
+
+pub fn parse_graph(graph_file: Option<&str>) -> (Vec<Vec<char>>, Point, Point) {
+    let file = File::open("data/".to_owned() + graph_file.unwrap_or("medium1.in"))
+        .expect("Could not open file");
+    let mut fp = (BufReader::new(file)).lines();
+    let size = fp.next().unwrap().unwrap().parse::<usize>().unwrap();
+    let mut graph: Vec<Vec<char>> = Vec::with_capacity(size);
+
+    for line in fp {
+        graph.push(line.unwrap().chars().collect());
+    }
+
+    let mut start_point = Point::default();
+    let mut end_point = Point::default();
+
+    for i in 0..graph.len() {
+        for j in 0..graph.len() {
+            if graph[i][j] == 'S' {
+                start_point.x = i as i32;
+                start_point.y = j as i32;
+            }
+            if graph[i][j] == 'E' {
+                end_point.x = i as i32;
+                end_point.y = j as i32;
+            }
+        }
+    }
+
+    (graph, start_point, end_point)
 }

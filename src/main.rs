@@ -1,44 +1,13 @@
 #[macro_use]
 extern crate clap;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 mod a_star;
 use a_star::{
-    utils::structs::{Point, HeurType, Flags},
+    utils::structs::{HeurType, Flags},
     hda,
     dpa,
-    kpbfs
+    kpbfs,
+    utils::helpers
 };
-
-fn parse_graph(graph_file: Option<&str>) -> (Vec<Vec<char>>, Point, Point) {
-    let file = File::open("data/".to_owned() + graph_file.unwrap_or("medium1.in"))
-        .expect("Could not open file");
-    let mut fp = (BufReader::new(file)).lines();
-    let size = fp.next().unwrap().unwrap().parse::<usize>().unwrap();
-    let mut graph: Vec<Vec<char>> = Vec::with_capacity(size);
-
-    for line in fp {
-        graph.push(line.unwrap().chars().collect());
-    }
-
-    let mut start_point = Point::default();
-    let mut end_point = Point::default();
-
-    for i in 0..graph.len() {
-        for j in 0..graph.len() {
-            if graph[i][j] == 'S' {
-                start_point.x = i as i32;
-                start_point.y = j as i32;
-            }
-            if graph[i][j] == 'E' {
-                end_point.x = i as i32;
-                end_point.y = j as i32;
-            }
-        }
-    }
-
-    (graph, start_point, end_point)
-}
 
 fn validate_heuristic(heur: String) -> Result<(), String> {
     match heur.as_str() {
@@ -83,7 +52,7 @@ fn main() {
     };
 
     let threads = config.value_of("NUM_THREADS").unwrap_or("4").parse().unwrap_or(4);
-    let (graph, start, end) = parse_graph(config.value_of("GRAPH"));
+    let (graph, start, end) = helpers::parse_graph(config.value_of("GRAPH"));
     let flags = Flags { graph, heur: heur_type, threads: threads };
     let algo = config.value_of("ALGO").unwrap_or("hda");
 
