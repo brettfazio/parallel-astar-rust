@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 mod a_star;
 use a_star::{
-    utils::structs::{Point, HeurType, Flags},
+    utils::structs::{HeurType, Flags},
     hda,
     dpa,
     kpbfs,
@@ -14,6 +14,18 @@ fn fibonacci(n: u64) -> u64 {
         1 => 1,
         n => fibonacci(n-1) + fibonacci(n-2),
     }
+}
+
+fn string_from_heur(heur: HeurType) -> String {
+    let heur_str = match heur {
+        HeurType::EuclideanDist => "euclidean",
+        HeurType::ManhattanDist => "manhattan",
+        HeurType::Expensive => "expensive",
+        HeurType::NonAdmissible => "nonadmissible",
+        HeurType::ExpensiveNonAdmissible => "expnon",
+    };
+
+    return heur_str.to_string();
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
@@ -30,18 +42,52 @@ fn criterion_benchmark(c: &mut Criterion) {
         HeurType::ExpensiveNonAdmissible
     ];
 
-    
+    let algo_type: [String; 3] = ["kpbfs".to_string(), "dpa".to_string(), "hda".to_string()];    
+
+    let input = "large1.in";
+
+    // Reduce the sample size for PA* algos.
+    let mut group = c.benchmark_group("pa");
+
+    group.sample_size(10);
 
     for cnt in thread_cnts.iter() {
         for heur_type in heurs.iter() {
-            let (graph, start, end) = parse_graph(Some("large1.in"));
-            let flags = Flags { graph, heur: *heur_type, threads: *cnt };
+            for algo in algo_type.iter() {
+    
+                let format = format!("{}_{}t_{}", *algo, (*cnt).to_string(), string_from_heur(*heur_type));
+
+                // Graph nor flags is copyable
+                let (_, start, end) = parse_graph(Some(input));
+
+                match algo.as_ref() {
+                    "hda" => {
+                        group.bench_function(&format, |b| b.iter(|| hda::setup(start, end,
+                            Flags { graph: parse_graph(Some(input)).0, heur: *heur_type, threads: *cnt })))
+                    },
+                    "dpa" => {
+                        group.bench_function(&format, |b| b.iter(|| dpa::setup(start, end,
+                            Flags { graph: parse_graph(Some(input)).0, heur: *heur_type, threads: *cnt })))
+                    },
+                    "kpbfs" => {
+                        group.bench_function(&format, |b| b.iter(|| kpbfs::setup(start, end,
+                            Flags { graph: parse_graph(Some(input)).0, heur: *heur_type, threads: *cnt })))
+                    },
+                    _ => { 
+                        group.bench_function(&format, |b| b.iter(|| hda::setup(start, end,
+                            Flags { graph: parse_graph(Some(input)).0, heur: *heur_type, threads: *cnt })))
+                    },
+                };
+
+                
+
+
+            }
         }
-    }
+    };
 
-    ;
+    group.finish();
 
-    //c.bench_function("dpa_8t", )
     c.bench_function("fib 20", |b| b.iter(|| fibonacci(black_box(20))));
 }
 
