@@ -28,6 +28,17 @@ fn string_from_heur(heur: HeurType) -> String {
     return heur_str.to_string();
 }
 
+/*
+To run and filter to a certain group of benchmarks simply run:
+
+cargo bench -- filter
+
+filter is a regex expression, for example running
+cargo bench -- dpa
+
+would run all benchmarks containing dpa. this means dpa_#t_T
+where # is in thread_cnt and T is in heurs
+*/
 fn criterion_benchmark(c: &mut Criterion) {
     // each algo, thread count, heuristic types
     // algo_#t_heurtype
@@ -79,16 +90,11 @@ fn criterion_benchmark(c: &mut Criterion) {
                     },
                 };
 
-                
-
-
             }
         }
     };
 
     group.finish();
-
-    c.bench_function("fib 20", |b| b.iter(|| fibonacci(black_box(20))));
 }
 
 criterion_group!(benches, criterion_benchmark);
