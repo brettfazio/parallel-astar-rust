@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 mod a_star;
 use a_star::{
     utils::structs::{HeurType, Flags},
@@ -7,14 +7,6 @@ use a_star::{
     kpbfs,
     utils::helpers::{parse_graph}
 };
-
-fn fibonacci(n: u64) -> u64 {
-    match n {
-        0 => 1,
-        1 => 1,
-        n => fibonacci(n-1) + fibonacci(n-2),
-    }
-}
 
 fn string_from_heur(heur: HeurType) -> String {
     let heur_str = match heur {

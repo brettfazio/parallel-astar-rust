@@ -34,13 +34,13 @@ fn main() {
     // and pass flags to kpbfs, dpa, and any other impls
     let config = clap_app!(a_star =>
         (@arg GRAPH: -g --graph +takes_value "Graph to use for algorithm implementation")
-        (@arg HEURISTIC: -h --heur +takes_value { validate_heuristic } "Heuristic type to use")
         (@arg NUM_THREADS: -n --num_threads +takes_value "Number of threads to use")
         (@arg ALGO: -a --algo +takes_value { validate_algo } "Underlying algorithm to use" )
+        (@arg HEURISTIC: -h --heur +takes_value { validate_heuristic } "Heuristic type to use")
         (@arg debug: -d "Set debugging flag")
     ).get_matches();
 
-    // Example cargo run -- --graph large2.in --algo hda
+    // Example cargo run -- --graph large2.in --num_threads 2 --algo hda --heur euclidean
 
     let heur_type = match config.value_of("HUERISTIC").unwrap_or("euclidean") {
         "euclidean" => HeurType::EuclideanDist,

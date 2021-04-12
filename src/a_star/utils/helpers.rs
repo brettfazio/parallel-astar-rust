@@ -20,7 +20,7 @@ fn random_wait() {
     //need to import via cargo
     let mut rng = rand::thread_rng();
 
-    let time = rng.gen_range(100..1000);
+    let time = rng.gen_range(10..100);
     let rand_millis = time::Duration::from_millis(time);
     thread::sleep(rand_millis);
 }
