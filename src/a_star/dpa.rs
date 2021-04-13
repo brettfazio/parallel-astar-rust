@@ -62,7 +62,11 @@ pub fn setup(start_point: Point, end_point: Point, flags: Flags)  {
         thread.join().expect("Panic");
     }
 
-    println!("All threads found goal node.")
+    let final_incumbent = incumbent.lock().unwrap();
+
+    println!("All threads found goal node {},{}. Cost of {}", final_incumbent.node.position.x, 
+                                    final_incumbent.node.position.y,
+                                    final_incumbent.cost);
 }
 
 // A* implementation

@@ -34,8 +34,8 @@ where # is in thread_cnt and T is in heurs
 fn criterion_benchmark(c: &mut Criterion) {
     // each algo, thread count, heuristic types
     // algo_#t_heurtype
-    // Threads: 1, 2, 4, 8, 16, 32
-    let thread_cnts: [usize; 6] = [1, 2, 4, 8, 16, 32];
+    // Threads: 1, 2, 4, 8, 16
+    let thread_cnts: [usize; 5] = [1, 2, 4, 8, 16];
     // heurtype: all
     let heurs: [HeurType; 5] = [
         HeurType::ManhattanDist,

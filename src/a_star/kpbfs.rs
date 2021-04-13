@@ -14,7 +14,7 @@ use super::utils::{
 
 fn search(
     _start: Node,
-    _id: usize,
+    id: usize,
     goal_node: Node,
     open: Arc<Mutex<BinaryHeap<Node>>>,
     closed_list: Arc<Mutex<HashMap<Point, Node>>>,
@@ -35,6 +35,8 @@ fn search(
 
         let node = pq.pop().unwrap();
         drop(pq);
+
+        //println!("{},{} {}", node.position.x, node.position.y, id);
 
         // If this is equal to the goal node
         if node.position.x == goal_node.position.x && node.position.y == goal_node.position.y
@@ -60,7 +62,6 @@ fn search(
 
         let adjacent = vec![(0, 1), (-1, 0), (1, 0), (0, -1)];
 
-        let mut add_pq = open.lock().unwrap();
         for (x, y) in adjacent {
             let n_x = node.position.x + x;
             let n_y = node.position.y + y;
@@ -87,12 +88,14 @@ fn search(
                 drop(prime_cl);
 
                 // add to pq
+                let mut add_pq = open.lock().unwrap();
                 add_pq.push(n_prime);
+                drop(add_pq);
+                // add_pq goes out of scope here.
             }
         }
         
-        drop(add_pq);
-        // add_pq goes out of scope here.
+        
     }
 }
 

@@ -18,10 +18,10 @@ fn manhattan(node: Node, end: Node) -> i128 {
 
 fn random_wait() {
     //need to import via cargo
-    let mut rng = rand::thread_rng();
+    //let mut rng = rand::thread_rng();
 
-    let time = rng.gen_range(10..100);
-    let rand_millis = time::Duration::from_millis(time);
+    //let time = rng.gen_range(1..5);
+    let rand_millis = time::Duration::from_millis(1);
     thread::sleep(rand_millis);
 }
 
