@@ -161,7 +161,7 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
         if temp_node == goal_node && incumbent_data.cost >= temp_node.g {
             incumbent_data.node = temp_node;
             incumbent_data.cost = temp_node.g;
-            
+
             // Defer exiting thread to start of the loop after receiving any final messages.
             exit = true;
         }
@@ -169,14 +169,13 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
         // Force unlocking so that other threads can access it.
         drop(incumbent_data);
         
-        let adjacent = vec![(-1, 1), (0, 1), (1, 1), (-1, 0), (1, 0), (-1, -1), (0, -1), (1, -1)];
-        
+        let adjacent = vec![(0, 1), (-1, 0), (1, 0), (0, -1)];        
 
         // First check if valid move, then We will offset to n', and pass off three-tuple
         // to random thread's buffer list.
         for (x, y) in adjacent {
             // Safe guard before we test a movement
-            if helpers::is_valid_neighbor(&graph, &temp_node, x, y) {
+            if helpers::is_valid_neighbor(&flags.graph, &temp_node, x, y) {
                 // n' is created, now let's put it in a random buffered list.
                 let (x_coordinate, y_coordinate) = (temp_node.position.x + x, temp_node.position.y + y);
                 let n_prime = Node::new(x_coordinate, y_coordinate, 0, temp_node.g + 1, 0, temp_node.position);
@@ -197,7 +196,7 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
                         Err(_) => {
                             tried.insert(i as i32);
                             
-                            if tried.len() < flags.threads {
+                            if tried.len() < flags.threads as usize {
                                 continue;
                             }
                             else {
