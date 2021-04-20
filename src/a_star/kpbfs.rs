@@ -14,7 +14,7 @@ use super::utils::{
 
 fn search(
     _start: Node,
-    id: usize,
+    _id: usize,
     goal_node: Node,
     open: Arc<Mutex<BinaryHeap<Node>>>,
     closed_list: Arc<Mutex<HashMap<Point, Node>>>,
@@ -94,8 +94,6 @@ fn search(
                 // add_pq goes out of scope here.
             }
         }
-        
-        
     }
 }
 

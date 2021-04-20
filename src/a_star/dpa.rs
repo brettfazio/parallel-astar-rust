@@ -71,7 +71,7 @@ pub fn setup(start_point: Point, end_point: Point, flags: Flags)  {
 
 // A* implementation
 fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Buffer>>,
-          mut barrier: DynamicHurdle, goal_node: Node, incumbent: Arc<Mutex<Incumbent>>, graph: Vec<Vec<char>>,
+          mut barrier: DynamicHurdle, goal_node: Node, incumbent: Arc<Mutex<Incumbent>>, _graph: Vec<Vec<char>>,
           sent_messages: Arc<AtomicU64>, received_messages: Arc<AtomicU64>,
           flags: Flags) {
     let mut buffer: BinaryHeap<Buffer> = BinaryHeap::new();
@@ -149,6 +149,8 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
         let mut incumbent_data = incumbent.lock().unwrap();
         
         if open.is_empty() || open.peek().unwrap().f >= incumbent_data.cost {
+            // Force early unlocking so that other threads can access it.
+            drop(incumbent_data);
             continue;
         }
         
