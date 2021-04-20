@@ -136,6 +136,8 @@ fn search(start: Node, rx: Receiver<Buffer>, tx: Vec<Sender<Buffer>>,
         let mut incumbent_data = incumbent.lock().unwrap();
         
         if open.is_empty() || open.peek().unwrap().f >= incumbent_data.cost {
+            // Force early unlocking so that other threads can access it.
+            drop(incumbent_data);
             continue;
         }
         
@@ -144,7 +146,7 @@ fn search(start: Node, rx: Receiver<Buffer>, tx: Vec<Sender<Buffer>>,
 
         open_list.remove(&temp_node);
         closed_list.insert(temp_node);
-        
+
         if temp_node == goal_node && incumbent_data.cost >= temp_node.g {
             incumbent_data.node = temp_node;
             incumbent_data.cost = temp_node.g;
