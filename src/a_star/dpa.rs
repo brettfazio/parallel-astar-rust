@@ -5,7 +5,7 @@ use std::{
     thread,
     mem::drop,
     collections::{HashSet, BinaryHeap},
-    sync::{Arc, Mutex, atomic}
+    sync::{Arc, atomic}
 };
 use super::utils::{
     structs::{Incumbent, Node, Point, Buffer, Flags},
