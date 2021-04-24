@@ -92,8 +92,6 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
     loop {
         // Initial thread synchronization before checking for count and messages.
         barrier.wait();
-        
-        //println!("one");
 
         if !first_iteration && sent_messages.load(Ordering::SeqCst) == received_messages.load(Ordering::SeqCst) {			
             break;
@@ -114,8 +112,6 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
             }
         }
 
-        //println!("three");
-        
         // Receiver and barrier are implicitely dropped, no need to drop them.
         if exit {
             break;
@@ -123,7 +119,6 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
 
         // Loop until buffer is empty.
         while !buffer.is_empty() {
-            //println!("top");
             let Buffer(node, weight, parent) = buffer.pop().unwrap();
 
             if closed_list.contains(&node) {
