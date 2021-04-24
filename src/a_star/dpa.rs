@@ -87,7 +87,6 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
     open.push(start);
     open_list.insert(start);
     buffer.push(Buffer(start, 0, start));
-    tried.insert(thread_num as i32);
 
     loop {
         // Initial thread synchronization before checking for count and messages.
@@ -185,12 +184,8 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
                 let n_prime = Node::new(x_coordinate, y_coordinate, 0, temp_node.g + 1, 0, temp_node.position);
                 
                 loop {
-                    let i = helpers::compute_recipient(&n_prime, &tried, flags.threads as u64); // calculate hash of node to send to a thread.
+                    let i = helpers::compute_recipient(&n_prime, &tried, flags.threads as u64, thread_num); // calculate hash of node to send to a thread.
                     
-                    if i == -1 {
-                        buffer.push(Buffer(n_prime, n_prime.g, temp_node));
-                        break;
-                    }
 
                     match tx[i as usize].send(Buffer(n_prime, n_prime.g, temp_node)) {
                         Ok(_) => {

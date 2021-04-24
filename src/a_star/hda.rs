@@ -48,7 +48,7 @@ pub fn setup(start_point: Point, end_point: Point, flags: Flags) {
 
         // Here we'd pass a start node to each thread.
         threads.push(thread::spawn(move || {
-            search(start, rx, transmitters, barrier, end,
+            search(start, i, rx, transmitters, barrier, end,
                    incumbent, sent_messages, received_messages, flags, id);
         }))
     }
@@ -69,7 +69,7 @@ pub fn setup(start_point: Point, end_point: Point, flags: Flags) {
                                     final_incumbent.cost);
 }
 
-fn search(start: Node, rx: Receiver<Buffer>, tx: Vec<Sender<Buffer>>,
+fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Buffer>>,
           mut barrier: DynamicHurdle, goal_node: Node, incumbent: Arc<Mutex<Incumbent>>,
           sent_messages: Arc<AtomicU64>, received_messages: Arc<AtomicU64>, flags: Flags, _id: usize) {
     let mut closed_list: HashSet<Node> = HashSet::new();
@@ -171,7 +171,7 @@ fn search(start: Node, rx: Receiver<Buffer>, tx: Vec<Sender<Buffer>>,
                 let n_prime = Node::new(x_coordinate, y_coordinate, 0, temp_node.g + 1, 0, temp_node.position);
                 
                 loop {
-                    let i = helpers::compute_recipient(&n_prime, &tried, flags.threads as u64);
+                    let i = helpers::compute_recipient(&n_prime, &tried, flags.threads as u64, thread_num);
 
                     match tx[i as usize].send(Buffer(n_prime, n_prime.g, temp_node)) {
                         Ok(_) => {

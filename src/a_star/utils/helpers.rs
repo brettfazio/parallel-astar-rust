@@ -1,4 +1,4 @@
-use std::{collections::{HashSet, hash_map::DefaultHasher}, hash::{Hash, Hasher}};
+use std::{collections::{HashSet, hash_map::DefaultHasher}, hash::{Hash, Hasher}, usize};
 use super::structs::{HeurType, Node, Point};
 
 use std::fs::File;
@@ -67,7 +67,7 @@ pub fn is_valid_neighbor(graph: &Vec<Vec<char>>, node: &Node, x: i32, y: i32) ->
 
 /// Calculate index using hashed node for thread to send Buffer() to.
 /// Returns -1 if in last thread.
-pub fn compute_recipient(node: &Node, setty: &HashSet<i32>, num_threads: u64) -> i32 {
+pub fn compute_recipient(node: &Node, setty: &HashSet<i32>, num_threads: u64, thread_num: usize) -> i32 {
     let mut index;
     let hash = (|| {
         let mut state = DefaultHasher::new();
@@ -88,7 +88,7 @@ pub fn compute_recipient(node: &Node, setty: &HashSet<i32>, num_threads: u64) ->
     }
     
     //return -1;
-    return 0;
+    return thread_num as i32;
 }
 
 pub fn parse_graph(graph_file: Option<&str>) -> (Vec<Vec<char>>, Point, Point) {
