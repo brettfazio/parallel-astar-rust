@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate clap;
+extern crate atomic;
 mod a_star;
 use a_star::{
     utils::structs::{HeurType, Flags},

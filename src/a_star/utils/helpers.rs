@@ -87,7 +87,8 @@ pub fn compute_recipient(node: &Node, setty: &HashSet<i32>, num_threads: u64) ->
         }
     }
     
-    return -1;
+    //return -1;
+    return 0;
 }
 
 pub fn parse_graph(graph_file: Option<&str>) -> (Vec<Vec<char>>, Point, Point) {

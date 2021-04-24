@@ -9,6 +9,7 @@ crossbeam = "0.8"
 rand = "0.8.1"
 clap = "2.27.0"
 criterion = "0.3"
+atomic = "0.5"
 
 [[bench]]
 name = "benchmark"

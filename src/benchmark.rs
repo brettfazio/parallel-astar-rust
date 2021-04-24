@@ -47,7 +47,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     let algo_type: [String; 3] = ["kpbfs".to_string(), "dpa".to_string(), "hda".to_string()];    
 
-    let input = "large1.in";
+    let input = "medium1.in";
 
     // Reduce the sample size for PA* algos.
     let mut group = c.benchmark_group("pa");

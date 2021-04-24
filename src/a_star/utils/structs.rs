@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 
 /// Goal node path and cost of path.
+#[derive(Copy, Clone)]
 pub struct Incumbent {
     pub node: Node,
     pub cost: i128
