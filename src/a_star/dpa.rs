@@ -5,7 +5,7 @@ use std::{
     thread,
     mem::drop,
     collections::{HashSet, BinaryHeap},
-    sync::{Arc, Mutex, atomic}
+    sync::{Arc, atomic}
 };
 use super::utils::{
     structs::{Incumbent, Node, Point, Buffer, Flags},
@@ -99,8 +99,6 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
             break;
         }
 
-        //println!("two");
-        
         // Barrier wait forces all threads to read the same d_me count.
         barrier.wait();
         first_iteration = false;
