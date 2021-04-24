@@ -128,8 +128,9 @@ fn search(start: Node, rx: Receiver<Buffer>, tx: Vec<Sender<Buffer>>,
             }
         }
 
-        // Receiver and barrier are implicitely dropped, no need to drop them.
+        // Barrier is implicitly dropped, no need to drop it.
         if exit {
+            drop(rx);
             break;
         }
 
