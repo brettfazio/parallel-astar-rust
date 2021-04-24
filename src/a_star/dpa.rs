@@ -188,7 +188,6 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
                 loop {
                     let i = helpers::compute_recipient(&n_prime, &tried, flags.threads as u64, thread_num); // calculate hash of node to send to a thread.
                     
-
                     match tx[i as usize].send(Buffer(n_prime, n_prime.g, temp_node)) {
                         Ok(_) => {
                             sent_messages.fetch_add(1, Ordering::SeqCst);

@@ -87,7 +87,6 @@ pub fn compute_recipient(node: &Node, setty: &HashSet<i32>, num_threads: u64, th
         }
     }
     
-    //return -1;
     return thread_num as i32;
 }
 
