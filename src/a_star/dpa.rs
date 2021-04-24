@@ -1,4 +1,5 @@
-use atomic::{AtomicU64, Ordering};
+use self::atomic::{AtomicU64, Ordering};
+use ::atomic::Atomic;
 use crossbeam::channel::{Sender, Receiver, unbounded};
 use std::{
     thread,
@@ -33,7 +34,7 @@ pub fn setup(start_point: Point, end_point: Point, flags: Flags)  {
     let end = Node::new(end_point.x, end_point.y, 0, 0, 0, Point::default());
     start.h = helpers::heuristic(start, end, &flags.heur);
     start.f = start.g + start.h;
-    let incumbent: Arc<Mutex<Incumbent>> = Arc::new(Mutex::new(Incumbent::new(start, i128::MAX)));
+    let incumbent: Arc<Atomic<Incumbent>> = Arc::new(Atomic::new(Incumbent::new(start, i128::MAX)));
 
     // Here, we would give each thread a different node to start on.
     // Those threads would run A* on each of their respective start nodes.
@@ -62,7 +63,7 @@ pub fn setup(start_point: Point, end_point: Point, flags: Flags)  {
         thread.join().expect("Panic");
     }
 
-    let final_incumbent = incumbent.lock().unwrap();
+    let final_incumbent = incumbent.load(Ordering::SeqCst);
 
     println!("All threads found goal node {},{}. Cost of {}", final_incumbent.node.position.x, 
                                     final_incumbent.node.position.y,
@@ -71,7 +72,7 @@ pub fn setup(start_point: Point, end_point: Point, flags: Flags)  {
 
 // A* implementation
 fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Buffer>>,
-          mut barrier: DynamicHurdle, goal_node: Node, incumbent: Arc<Mutex<Incumbent>>, _graph: Vec<Vec<char>>,
+          mut barrier: DynamicHurdle, goal_node: Node, incumbent: Arc<Atomic<Incumbent>>, _graph: Vec<Vec<char>>,
           sent_messages: Arc<AtomicU64>, received_messages: Arc<AtomicU64>,
           flags: Flags) {
     let mut buffer: BinaryHeap<Buffer> = BinaryHeap::new();
@@ -92,9 +93,13 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
         // Initial thread synchronization before checking for count and messages.
         barrier.wait();
         
+        //println!("one");
+
         if !first_iteration && sent_messages.load(Ordering::SeqCst) == received_messages.load(Ordering::SeqCst) {			
             break;
         }
+
+        //println!("two");
         
         // Barrier wait forces all threads to read the same d_me count.
         barrier.wait();
@@ -110,6 +115,8 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
                 Err(_) => break,
             }
         }
+
+        //println!("three");
         
         // Receiver and barrier are implicitely dropped, no need to drop them.
         if exit {
@@ -118,6 +125,7 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
 
         // Loop until buffer is empty.
         while !buffer.is_empty() {
+            //println!("top");
             let Buffer(node, weight, parent) = buffer.pop().unwrap();
 
             if closed_list.contains(&node) {
@@ -145,12 +153,7 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
             open.push(new_node);
         }
 
-        // Safe guards before we check if node is goal node.
-        let mut incumbent_data = incumbent.lock().unwrap();
-        
-        if open.is_empty() || open.peek().unwrap().f >= incumbent_data.cost {
-            // Force early unlocking so that other threads can access it.
-            drop(incumbent_data);
+        if open.is_empty() || open.peek().unwrap().f >= incumbent.load(Ordering::SeqCst).cost {
             continue;
         }
         
@@ -160,16 +163,22 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
         open_list.remove(&temp_node);
         closed_list.insert(temp_node);
         
-        if temp_node == goal_node && incumbent_data.cost >= temp_node.g {
-            incumbent_data.node = temp_node;
-            incumbent_data.cost = temp_node.g;
+        while temp_node == goal_node && incumbent.load(Ordering::SeqCst).cost > temp_node.g {
+            let temp = incumbent.load(Ordering::SeqCst);
 
-            // Defer exiting thread to start of the loop after receiving any final messages.
-            exit = true;
+            if temp.cost >= temp_node.g {
+                let mut new_incumbent = temp;
+                new_incumbent.node = temp_node;
+                new_incumbent.cost = temp_node.g;
+                match incumbent.compare_exchange(temp, new_incumbent, Ordering::SeqCst, Ordering::SeqCst) {
+                    Ok(_) => {
+                        exit = true;
+                    },
+                    Err(_) => {
+                    }
+                }
+            }
         }
-        
-        // Force unlocking so that other threads can access it.
-        drop(incumbent_data);
         
         let adjacent = vec![(0, 1), (-1, 0), (1, 0), (0, -1)];        
 

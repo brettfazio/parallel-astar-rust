@@ -1,4 +1,4 @@
-use atomic::{AtomicU64, Ordering};
+use self::atomic::{AtomicU64, Ordering};
 use crossbeam::channel::{Sender, Receiver, unbounded};
 use std::{
     thread,
@@ -44,11 +44,12 @@ pub fn setup(start_point: Point, end_point: Point, flags: Flags) {
         let sent_messages = sent_messages.clone();
         let received_messages = received_messages.clone();
         let flags = Flags { graph: graph.clone(), heur, threads: thread_cnt };
+        let id = i.clone();
 
         // Here we'd pass a start node to each thread.
         threads.push(thread::spawn(move || {
             search(start, rx, transmitters, barrier, end,
-                   incumbent, sent_messages, received_messages, flags);
+                   incumbent, sent_messages, received_messages, flags, id);
         }))
     }
 
@@ -70,7 +71,7 @@ pub fn setup(start_point: Point, end_point: Point, flags: Flags) {
 
 fn search(start: Node, rx: Receiver<Buffer>, tx: Vec<Sender<Buffer>>,
           mut barrier: DynamicHurdle, goal_node: Node, incumbent: Arc<Mutex<Incumbent>>,
-          sent_messages: Arc<AtomicU64>, received_messages: Arc<AtomicU64>, flags: Flags) {
+          sent_messages: Arc<AtomicU64>, received_messages: Arc<AtomicU64>, flags: Flags, _id: usize) {
     let mut closed_list: HashSet<Node> = HashSet::new();
     let mut open: BinaryHeap<Node> = BinaryHeap::new();
     let mut open_list: HashSet<Node> = HashSet::new();
@@ -126,7 +127,7 @@ fn search(start: Node, rx: Receiver<Buffer>, tx: Vec<Sender<Buffer>>,
                 Err(_) => break,
             }
         }
-        
+
         // Receiver and barrier are implicitely dropped, no need to drop them.
         if exit {
             break;
