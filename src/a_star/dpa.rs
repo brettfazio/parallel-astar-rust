@@ -13,7 +13,7 @@ use super::utils::{
     helpers
 };
 
-pub fn setup(start_point: Point, end_point: Point, flags: Flags)  {
+pub fn setup(start_point: Point, end_point: Point, flags: Flags) {
     let Flags { heur, graph, threads: thread_cnt } = flags;
     let mut threads = Vec::with_capacity(thread_cnt);
     let mut receivers: Vec<Receiver<Buffer>> = Vec::with_capacity(thread_cnt);
@@ -65,15 +65,16 @@ pub fn setup(start_point: Point, end_point: Point, flags: Flags)  {
 
     let final_incumbent = incumbent.load(Ordering::SeqCst);
 
-    println!("All threads found goal node {},{}. Cost of {}", final_incumbent.node.position.x, 
-                                    final_incumbent.node.position.y,
-                                    final_incumbent.cost);
+    println!("All threads found goal node {},{}. Cost of {}",
+            final_incumbent.node.position.x, 
+            final_incumbent.node.position.y,
+            final_incumbent.cost);
 }
 
 // A* implementation
 fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<Buffer>>,
-          mut barrier: DynamicHurdle, goal_node: Node, incumbent: Arc<Atomic<Incumbent>>, _graph: Vec<Vec<char>>,
-          sent_messages: Arc<AtomicU64>, received_messages: Arc<AtomicU64>,
+          mut barrier: DynamicHurdle, goal_node: Node, incumbent: Arc<Atomic<Incumbent>>,
+          _graph: Vec<Vec<char>>, sent_messages: Arc<AtomicU64>, received_messages: Arc<AtomicU64>,
           flags: Flags) {
     let mut buffer: BinaryHeap<Buffer> = BinaryHeap::new();
     let mut closed_list: HashSet<Node> = HashSet::new();
@@ -110,9 +111,10 @@ fn search(start: Node, thread_num: usize, rx: Receiver<Buffer>, tx: Vec<Sender<B
                 Err(_) => break,
             }
         }
-
-        // Receiver and barrier are implicitely dropped, no need to drop them.
+        
+        // Barrier is implicitly dropped, no need to drop it.
         if exit {
+            drop(rx);
             break;
         }
 
