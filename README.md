@@ -26,6 +26,8 @@ This is where the user can specify which hueristic they want our algorithmn to u
 and the type you use can impact results more than one would think.  The heuristics one can choose are "euclidian", "manhattan", "expensive", "nonadmissiable", 
 and "expnon"
 
+## Sample Run
+
 So for example let's say I wanted to run a medium level graph on 4 threads of the dpa algorithmn with the euclidean heurstic.  I would run this command below inside the "src" folder.
 
 cargo run -- --graph medium1.in --num_threads 4 --algo dpa --heur euclidean
