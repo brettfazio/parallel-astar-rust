@@ -2,6 +2,10 @@
 
 The team's code has been modularized and lives in 1 cargo project to make testing and running the application for many different cases very simple.
 
+## Code
+
+The bulk of our interesting code is in the src/a_star folder where you can view files such as `hda.rs` `kpbfs.rs` and `dpa.rs`.
+
 ## Running
 
 Below is a template for how to run our project inside the "src" folder.  Anything in "<>" is used as a flag and is variable input that the user can decide.
