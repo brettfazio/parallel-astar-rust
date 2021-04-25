@@ -34,7 +34,7 @@ and "expnon"
 
 So for example let's say I wanted to run a medium level graph on 4 threads of the dpa algorithmn with the euclidean heurstic.  I would run this command below inside the "src" folder.
 
-cargo run -- --graph medium1.in --num_threads 4 --algo dpa --heur euclidean
+`cargo run -- --graph medium1.in --num_threads 4 --algo dpa --heur euclidean`
   
 ## Running via Bench
 
