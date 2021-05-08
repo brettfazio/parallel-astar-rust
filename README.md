@@ -1,4 +1,4 @@
-# parallel-project-dump
+# Parallel A* Rust
 
 The team's code has been modularized and lives in 1 cargo project to make testing and running the application for many different cases very simple.
 
